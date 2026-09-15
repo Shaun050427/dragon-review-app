@@ -22,8 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: corepack enable
-      - run: pnpm install --no-frozen-lockfile
+      - run: npm install --no-audit --no-fund
       - name: Configure project path
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
@@ -32,7 +31,7 @@ jobs:
           else
             echo "NEXT_PUBLIC_BASE_PATH=/$REPO_NAME" >> "$GITHUB_ENV"
           fi
-      - run: pnpm build
+      - run: npm run build
       - run: touch out/.nojekyll
       - uses: actions/configure-pages@v5
         with:
