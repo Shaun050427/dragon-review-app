@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 import akshare as ak
 
 now = datetime.now(ZoneInfo("Asia/Shanghai"))
-if now.weekday() >= 5 or not (9 * 60 + 30 <= now.hour * 60 + now.minute <= 15 * 60 + 10):
+if now.weekday() >= 5 or not (9 * 60 + 25 <= now.hour * 60 + now.minute <= 15 * 60 + 10):
     raise RuntimeError("当前不在 A 股交易时段；拒绝发布可能过期的数据")
 date = now.strftime("%Y%m%d")
 frame = ak.stock_zt_pool_previous_em(date=date)
