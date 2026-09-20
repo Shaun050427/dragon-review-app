@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: yesterday-premium
+  group: market-data
   cancel-in-progress: false
 
 jobs:
