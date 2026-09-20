@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { listRevisions, pullDocument, pushDocument, verifyRepository, type GitHubConfig, type GitHubRevision, type ReviewDocument } from "@/lib/github-store";
 import { YesterdayPremium } from "@/app/yesterday-premium";
+import { LimitReview } from "@/app/limit-review";
 
 type Payload = { fields: Record<string, string>; checks: Record<string, boolean> };
 type CloudRecord = { date: string; payload: Payload; revision: string; updatedAt: string; device?: string };
@@ -31,7 +32,7 @@ const defaultPayload = (): Payload => ({
     maxPosition: "0", leaderEvidence: "", invalidations: "", scenarioA: "", scenarioB: "", scenarioC: "",
     noDoList: "", auction: "", firstFive: "", openingRivals: "", planDelta: "", action: "空仓",
     actualPosition: "0", executionNote: "", tradeReview: "", bestPattern: "", worstPattern: "",
-    closingMap: "", historicalAnalogy: "", oneChange: "", errorTag: "无", correction: "",
+    closingMap: "", historicalAnalogy: "", reviewThemes: "", reviewRoles: "", oneChange: "", errorTag: "无", correction: "",
   },
   checks: {},
 });
@@ -341,7 +342,8 @@ export function DashboardClient() {
       {legacyCount > 0 && <div className="notice-row"><div><strong>检测到本设备有 {legacyCount} 个旧版记录</strong><p>可以一次迁移到 GitHub；已有同日期记录不会被覆盖。</p></div><Button onClick={() => void migrateLegacy()} disabled={migrating}><Upload />{migrating ? "正在迁移" : "迁移旧记录"}</Button></div>}
       {conflict && <div className="conflict-row"><div><strong>保存前发现另一台设备已更新 {date}</strong><p>系统已经拉取最新版。你可以载入对方版本，或把本页作为一个新提交覆盖该交易日；其他日期不会受影响。</p></div><div><Button variant="outline" onClick={() => applyRecord(conflict, date)}>载入 GitHub 最新版</Button><Button variant="destructive" onClick={() => void save(true)}>提交本页版本</Button></div></div>}
       <div className="metrics"><div><span>当前净值</span><strong>{money(current)}</strong></div><div><span>累计收益</span><strong className={current >= start ? "up" : "down"}>{((current / start - 1) * 100).toFixed(2)}%</strong></div><div><span>距峰值回撤</span><strong className="down">{((current / peak - 1) * 100).toFixed(2)}%</strong></div><div><span>今日模式</span><strong>{f.tradeMode}</strong></div><div><span>纪律完成度</span><strong>{score(payload)}%</strong></div></div>
-      <Tabs defaultValue="plan" className="main-tabs"><TabsList className="tab-list"><TabsTrigger value="plan">今晚计划</TabsTrigger><TabsTrigger value="opening">9:30—10:00</TabsTrigger><TabsTrigger value="review">盘后复盘</TabsTrigger><TabsTrigger value="history">历史统计</TabsTrigger><TabsTrigger value="rules">龙空龙铁律</TabsTrigger></TabsList>
+      <Tabs defaultValue="plan" className="main-tabs"><TabsList className="tab-list"><TabsTrigger value="plan">今晚计划</TabsTrigger><TabsTrigger value="opening">9:30—10:00</TabsTrigger><TabsTrigger value="review">盘后复盘</TabsTrigger><TabsTrigger value="limit">涨停复盘图</TabsTrigger><TabsTrigger value="history">历史统计</TabsTrigger><TabsTrigger value="rules">龙空龙铁律</TabsTrigger></TabsList>
+        <TabsContent value="limit" className="panel-grid"><LimitReview date={date} /><Card className="span-6"><CardHeader><CardTitle>我的题材与竞争关系</CardTitle></CardHeader><CardContent><Textarea value={f.reviewThemes ?? ""} onChange={(e) => updateField("reviewThemes", e.target.value)} placeholder="主线、支线、板块竞争与证据；只存入私人复盘" /></CardContent></Card><Card className="span-6"><CardHeader><CardTitle>我的核心角色判断</CardTitle></CardHeader><CardContent><Textarea value={f.reviewRoles ?? ""} onChange={(e) => updateField("reviewRoles", e.target.value)} placeholder="龙头、中军、补涨、20cm 核心及证伪条件；由我确认" /></CardContent></Card></TabsContent>
         <TabsContent value="plan" className="panel-grid">
           <Card className="span-4"><CardHeader><CardTitle>账户与周期</CardTitle></CardHeader><CardContent className="form-grid two"><Field label="比赛初始资金"><Input type="number" value={f.startEquity} onChange={(e) => updateField("startEquity", e.target.value)} /></Field><Field label="当前净值"><Input type="number" value={f.currentEquity} onChange={(e) => updateField("currentEquity", e.target.value)} /></Field><Field label="历史峰值"><Input type="number" value={f.peakEquity} onChange={(e) => updateField("peakEquity", e.target.value)} /></Field><Field label="当日盈亏额"><Input type="number" value={f.dailyPnl} onChange={(e) => updateField("dailyPnl", e.target.value)} /></Field><Field label="周期阶段"><Select value={f.cyclePhase} onValueChange={(v) => updateField("cyclePhase", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["混沌","启动试错","发育","成型","首次分歧","加速","高位震荡","退潮","冰点修复"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field><Field label="今日允许模式"><Select value={f.tradeMode} onValueChange={(v) => updateField("tradeMode", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["空仓观察","主升龙头","超跌反抽"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field></CardContent></Card>
           <YesterdayPremium />
