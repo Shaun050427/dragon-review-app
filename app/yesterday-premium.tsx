@@ -17,7 +17,7 @@ export function YesterdayPremium() {
   const [data, setData] = useState<Snapshot | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(0);
   const refresh = useCallback(async () => {
     setBusy(true);
     try {
@@ -29,7 +29,11 @@ export function YesterdayPremium() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : "行情快照读取失败"); }
     finally { setBusy(false); }
   }, []);
-  useEffect(() => { void refresh(); const timer = window.setInterval(() => { setNow(Date.now()); void refresh(); }, 60000); return () => window.clearInterval(timer); }, [refresh]);
+  useEffect(() => {
+    const initial = window.setTimeout(() => { void refresh(); }, 0);
+    const timer = window.setInterval(() => { setNow(Date.now()); void refresh(); }, 60000);
+    return () => { window.clearTimeout(initial); window.clearInterval(timer); };
+  }, [refresh]);
   const fresh = data && data.tradeDate === chinaDate() && now - Date.parse(data.observedAt) >= 0 && now - Date.parse(data.observedAt) <= 12 * 60_000;
   const changes = data?.stocks.map((s) => s.changePct) ?? [];
   const positives = changes.filter((n) => n > 0).length;

@@ -281,6 +281,21 @@ button, input, textarea { font: inherit; }
 .revision-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .revision-item small { color: var(--muted-foreground); font-size: 12px; }
 .number-list { display: grid; gap: 10px; padding-left: 22px; }
+.cycle-summary { border-color: rgb(84 210 255 / 38%); }
+.decision-banner { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid rgb(84 210 255 / 25%); border-radius: 11px; background: rgb(84 210 255 / 7%); }
+.decision-banner svg { width: 18px; flex: 0 0 auto; margin-top: 3px; color: var(--primary); }
+.decision-banner strong { flex: 0 0 auto; color: var(--primary); }
+.decision-banner span { color: var(--muted-foreground); font-size: 14px; }
+.risk-card { border-color: rgb(255 209 102 / 28%); }
+.risk-warning { display: flex; gap: 11px; padding: 13px 14px; border: 1px solid rgb(255 209 102 / 32%); border-radius: 11px; background: rgb(255 209 102 / 7%); }
+.risk-warning svg { width: 20px; flex: 0 0 auto; margin-top: 2px; color: #ffd166; }
+.risk-warning strong { color: #ffd166; }
+.risk-warning p { margin: 3px 0 0; color: var(--muted-foreground); font-size: 14px; }
+.opportunity-table { width: 100%; min-width: 900px; border-collapse: collapse; }
+.opportunity-table th, .opportunity-table td { padding: 11px 13px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.opportunity-table th { color: var(--muted-foreground); font-size: 13px; }
+.opportunity-table td:nth-child(2) { color: #83f3bd; font-weight: 750; }
+.system-formula { margin: 14px 0 0; padding: 13px 15px; border-left: 3px solid var(--primary); color: #dfeaf5; background: rgb(84 210 255 / 6%); font-weight: 750; }
 
 @media (max-width: 1050px) {
   .metrics { grid-template-columns: repeat(3, 1fr); }
@@ -299,5 +314,6 @@ button, input, textarea { font: inherit; }
   .metrics > div { min-height: 82px; }
   .span-4, .span-5, .span-6, .span-7, .span-8 { grid-column: 1 / -1; }
   .form-grid.two, .time-grid, .discipline-grid { grid-template-columns: 1fr; }
+  .decision-banner { display: grid; }
   .notice-row > button { width: 100%; }
 }

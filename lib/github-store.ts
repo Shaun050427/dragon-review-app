@@ -10,7 +10,7 @@ export type StoredReview = {
 };
 
 export type ReviewDocument = {
-  schemaVersion: 5;
+  schemaVersion: 5 | 6;
   updatedAt: string;
   records: Record<string, StoredReview>;
 };
@@ -71,7 +71,7 @@ async function githubFetch<T>(url: string, config: GitHubConfig, init?: RequestI
 }
 
 export function emptyDocument(): ReviewDocument {
-  return { schemaVersion: 5, updatedAt: new Date(0).toISOString(), records: {} };
+  return { schemaVersion: 6, updatedAt: new Date(0).toISOString(), records: {} };
 }
 
 export async function verifyRepository(config: GitHubConfig) {
