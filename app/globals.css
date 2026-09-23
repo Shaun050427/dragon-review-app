@@ -369,3 +369,12 @@ button, input, textarea { font: inherit; }
   .decision-banner { display: grid; }
   .notice-row > button { width: 100%; }
 }
+
+/* Behavior observations stay readable on narrow screens without hiding raw evidence. */
+.effect-table { width: 100%; min-width: 780px; border-collapse: collapse; }
+.effect-table th, .effect-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+.effect-table th { color: var(--muted-foreground); font-size: 12px; white-space: nowrap; }
+.effect-table td:first-child { font-weight: 700; }
+.effect-table input { min-width: 125px; }
+.effect-table td:nth-child(3) input { min-width: 230px; }
+.effect-observer .field textarea { min-height: 80px; }

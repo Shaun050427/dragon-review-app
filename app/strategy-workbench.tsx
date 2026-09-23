@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ArrowRight, Ban, Crosshair, ShieldCheck, Target, TrendingUp } from "lucide-react";
+import { AlertTriangle, ArrowRight, Ban, Crosshair, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -55,7 +55,7 @@ const strategies: Strategy[] = [
     environments: "冰点修复 / 修复转上升",
     buy: "缩量止跌、关键位守住后首次主动转强；不接第一次暴跌",
     sell: "反抽卖压力位；只有重新带动板块，才升级为二波",
-    warning: "必须区分反抽与二波，不能把 A 杀解释成便宜",
+    warning: "区分反抽与二波；强势反抽次日竞价明显低于预期，开盘不能修复则原理由失效。-3%只作观察阈值，不作自动卖点。",
   },
   {
     id: "shape",
@@ -125,8 +125,6 @@ export function StrategyWorkbench({ fields: f, onChange }: Props) {
               <Field label="身份"><Select value={f[`${item.id}Role`] ?? "未确认"} onValueChange={(v) => onChange(`${item.id}Role`, v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["未确认","核心龙头","分支核心","容量中军","次龙","后排否决"].map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></Field>
               <Field label="触发条件"><Textarea value={f[`${item.id}Trigger`] ?? ""} onChange={(e) => onChange(`${item.id}Trigger`, e.target.value)} placeholder="价格、量能、板块与时间条件" /></Field>
               <Field label="证伪条件"><Textarea value={f[`${item.id}Invalidation`] ?? ""} onChange={(e) => onChange(`${item.id}Invalidation`, e.target.value)} placeholder="出现即结束，不得改叙事" /></Field>
-              <Field label="预期收益空间 %"><Input type="number" step="0.1" value={f[`${item.id}RewardPct`] ?? ""} onChange={(e) => onChange(`${item.id}RewardPct`, e.target.value)} /></Field>
-              <Field label="计划风险 R"><Input type="number" step="0.25" min="0" max="1" value={f[`${item.id}RiskR`] ?? ""} onChange={(e) => onChange(`${item.id}RiskR`, e.target.value)} placeholder="0.5 / 1" /></Field>
             </div>
           </CardContent>
         </Card>;
@@ -168,21 +166,5 @@ export function StrategyWorkbench({ fields: f, onChange }: Props) {
       </Card>
     </section>
 
-    <Card className="workflow-card">
-      <CardHeader><CardTitle><Target />每日复盘闭环</CardTitle></CardHeader>
-      <CardContent>
-        <div className="workflow-line">
-          {[
-            ["15:00 后", "一手事实", "记录涨停、梯队、板块竞争、监管公告"],
-            ["晚间", "四池筛选", "每套最多一个候选，后排直接删除"],
-            ["9:25", "预案核验", "只判断环境、身份和触发是否仍成立"],
-            ["9:30—10:00", "唯一执行", "只执行交易票；证伪则空仓"],
-            ["收盘", "归因复盘", "按原始理由统计 R，不用结果改写过程"],
-          ].map(([time, title, detail], index) => <div className="workflow-step" key={time}><span>{index + 1}</span><div><small>{time}</small><strong>{title}</strong><p>{detail}</p></div></div>)}
-        </div>
-      </CardContent>
-    </Card>
-
-    <div className="system-thesis"><TrendingUp /><p><strong>总纲：</strong>主升赚监管空间，解除赚弹性恢复；退潮不接刀，修复只做老龙；形态只做右侧，一笔交易一个理由；买在预期形成前，卖在预期兑现时。</p></div>
   </div>;
 }
