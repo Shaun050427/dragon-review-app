@@ -54,17 +54,23 @@ const defaultPayload = (): Payload => ({
 const gateChecks = [
   ["gate_planned", "所选股票是昨晚写下的三个候选之一，且买点已写清"],
   ["gate_phase", "周期阶段仍允许该模式"],
+  ["gate_environment", "大盘量能、涨跌家数及同题材/同模式核心未触发环境否决"],
   ["gate_leader", "开盘后地位增强，而非只有个股高开"],
   ["gate_sector", "中军、梯队或新增首板至少一项确认"],
+  ["gate_profit_effect", "同模式仍有赚钱效应；没有把监管空间误当成新增买盘"],
   ["gate_regulatory", "若逻辑依赖监管解除或异动余量，状态与算法已核对，未用主观猜测替代"],
+  ["gate_probe", "首笔只是试错仓；只有环境与资金链确认后才允许增加仓位"],
+  ["gate_crowding", "已评估共识拥挤、节前/隔夜和 T+1 无法止损风险"],
   ["gate_risk", "未触发任何证伪条件"],
   ["gate_size", "仓位不超上限，接受隔夜最坏情景"],
 ];
 
 const disciplineChecks = [
   ["disc_plan", "昨晚有书面预案"], ["disc_one", "只在三个预设候选里选一只执行"],
-  ["disc_wait", "非模式内则空仓"], ["disc_time", "10:00后未开新仓"],
+  ["disc_wait", "非模式内则空仓"], ["disc_environment", "价格到位但环境未到时，没有继续加仓"],
+  ["disc_probe", "试错仓先于确认仓，没有一步打满"], ["disc_time", "10:00后未开新仓"],
   ["disc_size", "仓位未超上限"], ["disc_noadd", "证伪后未加仓"],
+  ["disc_no_drift", "原始理由失效后没有改成反抽/二波继续持有"],
   ["disc_exit", "卖出按预案执行"], ["disc_truth", "只用当时可知信息复盘"],
 ];
 
@@ -347,6 +353,17 @@ export function DashboardClient() {
       {legacyCount > 0 && <div className="notice-row"><div><strong>检测到本设备有 {legacyCount} 个旧版记录</strong><p>可以一次迁移到 GitHub；已有同日期记录不会被覆盖。</p></div><Button onClick={() => void migrateLegacy()} disabled={migrating}><Upload />{migrating ? "正在迁移" : "迁移旧记录"}</Button></div>}
       {conflict && <div className="conflict-row"><div><strong>保存前发现另一台设备已更新 {date}</strong><p>系统已经拉取最新版。你可以载入对方版本，或把本页作为一个新提交覆盖该交易日；其他日期不会受影响。</p></div><div><Button variant="outline" onClick={() => applyRecord(conflict, date)}>载入 GitHub 最新版</Button><Button variant="destructive" onClick={() => void save(true)}>提交本页版本</Button></div></div>}
       <div className="metrics"><div><span>当前净值</span><strong>{money(current)}</strong></div><div><span>累计收益</span><strong className={current >= start ? "up" : "down"}>{((current / start - 1) * 100).toFixed(2)}%</strong></div><div><span>距峰值回撤</span><strong className="down">{((current / peak - 1) * 100).toFixed(2)}%</strong></div><div><span>今日模式</span><strong>{f.ticketStrategy || f.tradeMode}</strong></div><div><span>今日已实现 R</span><strong className={Number(f.realizedR) >= 0 ? "up" : "down"}>{Number(f.realizedR || 0).toFixed(1)}R</strong></div></div>
+      <section className="jinjian-guardrail" aria-label="金健米业复盘形成的交易护栏">
+        <div className="guardrail-heading"><AlertTriangle /><div><span>9·24 金健米业复盘 · 开仓前强制阅读</span><strong>价格到了，但环境没到，就不是买点。</strong></div></div>
+        <div className="guardrail-rules">
+          <div><b>01 · 环境一票否决</b><p>大盘普跌/缩量、同题材两只以上核心负反馈，或高位辨识度批量补跌：停止加仓。环境优先于个股价格与昨晚计划。</p></div>
+          <div><b>02 · 试错仓先于确认仓</b><p>9:30—9:35 首笔只买观察权；板块、核心地位与资金链确认后再加。T+1 当天不能卖，仓位本身就是止损。</p></div>
+          <div><b>03 · 异动空间不是买盘</b><p>距 100%/200% 红线还有空间，只代表“允许涨多少”，不代表市场愿意买。T-1 高度共识、节前与隔夜风险叠加时禁止满仓。</p></div>
+          <div><b>04 · 修复必须验证传导链</b><p>新题材活口 → 辨识度龙头 → 老核心的尾盘回补，只能定义为局部修复；次日链条断裂，就不能当成全面回暖。</p></div>
+          <div><b>05 · 禁止逻辑漂移</b><p>绕异动理由失效，这笔交易结束；不能临时改名为“龙回头/二波”给持仓续命。新模式必须重新开独立交易票。</p></div>
+        </div>
+        <p className="guardrail-bottom">执行顺序：先看赚钱效应与负反馈 → 再看身份和资金链 → 最后才看价格、异动余量与形态。</p>
+      </section>
       <Tabs defaultValue="effect" className="main-tabs"><TabsList className="tab-list"><TabsTrigger value="effect">赚钱效应</TabsTrigger><TabsTrigger value="system">四大战法</TabsTrigger><TabsTrigger value="plan">今晚计划</TabsTrigger><TabsTrigger value="opening">9:30—10:00</TabsTrigger><TabsTrigger value="review">盘后复盘</TabsTrigger><TabsTrigger value="limit">涨停复盘图</TabsTrigger><TabsTrigger value="history">历史统计</TabsTrigger></TabsList>
         <TabsContent value="effect"><EffectObserver fields={f} onChange={updateField} recent={recentEffectDays} /></TabsContent>
         <TabsContent value="system"><StrategyWorkbench fields={f} onChange={updateField} /></TabsContent>
@@ -362,7 +379,7 @@ export function DashboardClient() {
           <Card className={`span-5 gate-card ${gatePassed ? "pass" : "stop"}`}><CardHeader><CardTitle>下单授权闸门</CardTitle></CardHeader><CardContent className="check-list"><Field label="今日选择执行哪只候选"><Select value={f.executionCandidate || "none"} onValueChange={(v) => updateField("executionCandidate", v === "none" ? "" : v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">未选择 · 空仓</SelectItem>{candidates.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent></Select></Field>{gateChecks.map((item) => <CheckItem key={item[0]} item={item} checked={Boolean(payload.checks[item[0]])} onChange={(v) => updateCheck(item[0], v)} />)}<div className="gate-result">{gatePassed ? <><Check />允许执行：仅限 {f.executionCandidate}，仓位≤{f.maxPosition}%</> : <><AlertTriangle />默认不下单：条件尚未全部满足</>}</div></CardContent></Card>
         </TabsContent>
         <TabsContent value="review" className="panel-grid">
-          <Card className="span-6"><CardHeader><CardTitle>交易与纠偏</CardTitle></CardHeader><CardContent className="form-grid"><Field label="买卖理由与实际偏差"><Textarea value={f.tradeReview} onChange={(e) => updateField("tradeReview", e.target.value)} /></Field><Field label="如果重来，只改一个动作"><Textarea value={f.oneChange} onChange={(e) => updateField("oneChange", e.target.value)} /></Field><Field label="错误标签"><Select value={f.errorTag} onValueChange={(v) => updateField("errorTag", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["无","计划外交易","非预设候选","追加速","退潮接力","后排套利","仓位超限","证伪后不撤","超时开仓","卖点拖延","结果替代过程评价"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field><Field label="明日唯一纠偏"><Textarea value={f.correction} onChange={(e) => updateField("correction", e.target.value)} /></Field></CardContent></Card>
+          <Card className="span-6"><CardHeader><CardTitle>交易与纠偏</CardTitle></CardHeader><CardContent className="form-grid"><Field label="买卖理由与实际偏差"><Textarea value={f.tradeReview} onChange={(e) => updateField("tradeReview", e.target.value)} /></Field><Field label="如果重来，只改一个动作"><Textarea value={f.oneChange} onChange={(e) => updateField("oneChange", e.target.value)} /></Field><Field label="错误标签"><Select value={f.errorTag} onValueChange={(v) => updateField("errorTag", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["无","计划外交易","非预设候选","价格到位即满仓","环境否决后仍加仓","拥挤/节前风险漏算","逻辑漂移","追加速","退潮接力","后排套利","仓位超限","证伪后不撤","超时开仓","卖点拖延","结果替代过程评价"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field><Field label="明日唯一纠偏"><Textarea value={f.correction} onChange={(e) => updateField("correction", e.target.value)} /></Field></CardContent></Card>
           <Card className="span-12"><CardHeader><CardTitle>过程纪律打卡</CardTitle></CardHeader><CardContent className="discipline-grid">{disciplineChecks.map((item) => <CheckItem key={item[0]} item={item} checked={Boolean(payload.checks[item[0]])} onChange={(v) => updateCheck(item[0], v)} />)}</CardContent></Card>
         </TabsContent>
         <TabsContent value="history" className="history-stack"><div className="metrics history-metrics"><div><span>已记录交易日</span><strong>{records.length}</strong></div><div><span>有交易日胜率</span><strong>{stats.winRate}%</strong></div><div><span>累计记录盈亏</span><strong>{money(stats.totalPnl)}</strong></div><div><span>累计实现 R</span><strong>{stats.totalR.toFixed(1)}R</strong></div><div><span>违规标签次数</span><strong>{stats.violations}</strong></div></div><Card><CardHeader className="history-head"><div><CardTitle>GitHub 逐日档案</CardTitle><p>打开页面、提交前和每30秒都会拉取；每次提交都能在 GitHub 中审计和回溯。</p></div><div><Button variant="outline" onClick={() => void fetchAll()}><RefreshCw />拉取最新版</Button><Button variant="outline" onClick={exportCloud}><Download />导出快照</Button></div></CardHeader><CardContent><div className="table-wrap"><Table><TableHeader><TableRow><TableHead>日期</TableHead><TableHead>周期</TableHead><TableHead>模式</TableHead><TableHead>候选</TableHead><TableHead>动作</TableHead><TableHead>盈亏</TableHead><TableHead>实现 R</TableHead><TableHead>设备</TableHead><TableHead></TableHead></TableRow></TableHeader><TableBody>{records.map((item) => <TableRow key={item.date}><TableCell><button className="date-link" onClick={() => chooseDate(item.date)}>{item.date}</button></TableCell><TableCell>{item.payload.fields.cyclePhase}</TableCell><TableCell>{item.payload.fields.ticketStrategy || item.payload.fields.tradeMode}</TableCell><TableCell>{item.payload.fields.ticketStock || item.payload.fields.candidate || "—"}</TableCell><TableCell>{item.payload.fields.action}</TableCell><TableCell>{money(item.payload.fields.dailyPnl)}</TableCell><TableCell>{Number(item.payload.fields.realizedR || 0).toFixed(1)}R</TableCell><TableCell>{item.device || "—"}</TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => void removeDay(item.date)}>删除</Button></TableCell></TableRow>)}</TableBody></Table>{!records.length && <p className="empty">GitHub 中还没有复盘记录，填写后提交即可创建数据文件。</p>}</div></CardContent></Card><Card><CardHeader className="history-head"><div><CardTitle>提交历史与恢复</CardTitle><p>恢复旧版不会改写历史，而是基于旧数据创建一个新提交。</p></div><Button variant="outline" onClick={() => void loadRevisions()} disabled={revisionBusy}>{revisionBusy ? <RefreshCw className="animate-spin" /> : <History />}读取版本历史</Button></CardHeader><CardContent><div className="revision-list">{revisions.map((item) => <div className="revision-item" key={item.sha}><div><strong>{item.sha.slice(0, 7)}</strong><span>{item.message}</span><small>{new Date(item.authoredAt).toLocaleString("zh-CN")} · {item.author}</small></div><Button variant="outline" size="sm" onClick={() => void restoreRevision(item)} disabled={revisionBusy}><RotateCcw />恢复当前交易日</Button></div>)}{!revisions.length && <p className="empty">点击“读取版本历史”查看最近40次提交。</p>}</div></CardContent></Card></TabsContent>
