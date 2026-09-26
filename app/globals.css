@@ -210,6 +210,18 @@ button, input, textarea { font: inherit; }
 .metrics strong { display: block; margin-top: 9px; font-size: clamp(18px, 2vw, 24px); line-height: 1.2; }
 .up { color: #83f3bd; }
 .down { color: #ff8491; }
+.jinjian-guardrail { margin: 0 0 18px; overflow: hidden; border: 1px solid rgb(255 113 128 / 52%); border-radius: 16px; background: linear-gradient(125deg, rgb(255 113 128 / 12%), rgb(255 209 102 / 5%) 55%, rgb(7 17 31 / 82%)); box-shadow: 0 18px 50px rgb(255 75 92 / 8%); }
+.guardrail-heading { display: flex; align-items: center; gap: 12px; padding: 15px 17px; border-bottom: 1px solid rgb(255 113 128 / 22%); }
+.guardrail-heading > svg { flex: 0 0 auto; width: 25px; height: 25px; color: #ff8491; }
+.guardrail-heading span, .guardrail-heading strong { display: block; }
+.guardrail-heading span { color: #ff9ca5; font-size: 12px; font-weight: 850; letter-spacing: .08em; }
+.guardrail-heading strong { margin-top: 3px; color: #fff1f2; font-size: clamp(17px, 2vw, 22px); }
+.guardrail-rules { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.guardrail-rules > div { min-height: 142px; padding: 15px 16px; border-right: 1px solid rgb(255 113 128 / 16%); }
+.guardrail-rules > div:last-child { border-right: 0; }
+.guardrail-rules b { color: #ffd166; font-size: 13px; }
+.guardrail-rules p { margin: 7px 0 0; color: #d7c6ca; font-size: 12px; line-height: 1.65; }
+.guardrail-bottom { margin: 0; padding: 10px 16px; border-top: 1px solid rgb(255 113 128 / 18%); color: #ffb5bc; background: rgb(7 17 31 / 42%); font-size: 13px; font-weight: 750; text-align: center; }
 .main-tabs { gap: 14px; }
 .tab-list { width: 100%; height: auto !important; justify-content: flex-start; overflow-x: auto; padding: 5px; border: 1px solid var(--border); background: var(--card); }
 .tab-list button { min-width: 116px; padding: 9px 12px; font-size: 14px; }
@@ -289,7 +301,7 @@ button, input, textarea { font: inherit; }
 .limit-review summary { cursor: pointer; }
 @media (max-width: 700px) { .limit-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .limit-ladder > div { display: grid; gap: 2px; } }
 @media (max-width: 700px) { .premium-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 1050px) { .command-strip { display: grid; }.command-title { min-width: 0; }.command-facts { max-width: none; }.strategy-grid, .risk-ticket-grid { grid-template-columns: 1fr; }.workflow-line { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1050px) { .command-strip { display: grid; }.command-title { min-width: 0; }.command-facts { max-width: none; }.strategy-grid, .risk-ticket-grid { grid-template-columns: 1fr; }.workflow-line { grid-template-columns: repeat(2, minmax(0, 1fr)); }.guardrail-rules { grid-template-columns: repeat(2, minmax(0, 1fr)); }.guardrail-rules > div { min-height: 0; border-bottom: 1px solid rgb(255 113 128 / 16%); } }
 @media (max-width: 700px) { .command-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }.command-facts > div:nth-child(odd) { border-left: 0; }.strategy-inputs, .risk-numbers { grid-template-columns: 1fr; }.workflow-line { grid-template-columns: 1fr; } }
 [data-slot="card"] { border-color: var(--border); box-shadow: 0 16px 44px rgb(0 0 0 / 15%); }
 [data-slot="card-header"] { padding-bottom: 12px; }
@@ -368,6 +380,8 @@ button, input, textarea { font: inherit; }
   .form-grid.two, .time-grid, .discipline-grid { grid-template-columns: 1fr; }
   .decision-banner { display: grid; }
   .notice-row > button { width: 100%; }
+  .guardrail-rules { grid-template-columns: 1fr; }
+  .guardrail-rules > div { border-right: 0; }
 }
 
 /* Behavior observations stay readable on narrow screens without hiding raw evidence. */
