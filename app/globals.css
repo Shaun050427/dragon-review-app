@@ -227,6 +227,17 @@ button, input, textarea { font: inherit; }
 .tab-list button { min-width: 116px; padding: 9px 12px; font-size: 14px; }
 .panel-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; }
 .strategy-workbench { display: grid; gap: 14px; }
+.liquidity-content { display: grid; gap: 14px; }
+.liquidity-note { margin: 0; color: var(--muted-foreground); font-size: 13px; line-height: 1.65; }
+.liquidity-summary { margin: 0; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: rgb(84 210 255 / 7%); font-size: 14px; line-height: 1.6; }
+.liquidity-danger { border-color: rgb(255 113 128 / 42%); color: #ffb3bc; background: rgb(255 113 128 / 9%); }
+.liquidity-content summary { cursor: pointer; padding: 10px 0; color: var(--primary); font-size: 14px; font-weight: 700; }
+.liquidity-rules { width: 100%; min-width: 600px; border-collapse: collapse; font-size: 13px; }
+.liquidity-rules th, .liquidity-rules td { padding: 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; line-height: 1.6; }
+.liquidity-rules th { color: var(--muted-foreground); }
+.liquidity-events { display: grid; gap: 14px; }
+.liquidity-events > div { padding: 14px; border: 1px solid var(--border); border-radius: 10px; }
+.liquidity-events strong { display: block; margin-bottom: 12px; }
 .command-strip { display: flex; align-items: stretch; justify-content: space-between; gap: 18px; padding: 16px 18px; border: 1px solid rgb(84 210 255 / 32%); border-radius: 16px; background: linear-gradient(120deg, rgb(84 210 255 / 10%), rgb(131 243 189 / 5%)); }
 .command-title { display: grid; align-content: center; min-width: 340px; }
 .command-title p { margin: 0; color: var(--muted-foreground); font-size: 12px; font-weight: 800; letter-spacing: .12em; }

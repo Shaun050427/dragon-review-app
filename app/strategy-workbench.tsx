@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ExitPlan, LiquidityEnvironment } from "@/app/liquidity-discipline";
 
 type Props = {
   fields: Record<string, string>;
@@ -104,6 +105,8 @@ export function StrategyWorkbench({ fields: f, onChange }: Props) {
       </div>
     </section>
 
+    <LiquidityEnvironment fields={f} onChange={onChange} />
+
     <section className="strategy-grid">
       {strategies.map((item) => {
         const status = f[`${item.id}Status`] ?? "关闭";
@@ -161,6 +164,7 @@ export function StrategyWorkbench({ fields: f, onChange }: Props) {
             <Field label="预期兑现"><Textarea value={f.ticketExit ?? ""} onChange={(e) => onChange("ticketExit", e.target.value)} placeholder="价格 / 事件 / 盘面触发" /></Field>
             <Field label="唯一证伪"><Textarea value={f.ticketInvalidation ?? ""} onChange={(e) => onChange("ticketInvalidation", e.target.value)} placeholder="触发即结束本笔交易" /></Field>
           </div>
+          <ExitPlan fields={f} onChange={onChange} />
           <div className="ticket-warning"><AlertTriangle /><span>若原始理由失效，本笔交易结束。之后即使出现另一模式，也必须重新建立独立交易票。</span></div>
         </CardContent>
       </Card>
