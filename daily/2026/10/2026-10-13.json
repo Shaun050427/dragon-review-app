@@ -1,0 +1,1406 @@
+{
+  "schemaVersion": 1,
+  "tradeDate": "2026-10-13",
+  "observedAt": "2026-10-13T23:09:20+08:00",
+  "sources": {
+    "pools": "东方财富涨停股池、跌停股池、炸板股池 / AKShare",
+    "themes": "所属行业字段；不是概念题材统计",
+    "lhb": "东方财富龙虎榜详情 / AKShare；仅榜单净买额，不归因自然人"
+  },
+  "counts": {
+    "limitUp": 67,
+    "limitDown": 8,
+    "broken": 19,
+    "firstBoard": 57
+  },
+  "ladder": {
+    "3": [
+      "002343",
+      "603096",
+      "605577",
+      "605136",
+      "002696"
+    ],
+    "2": [
+      "600693",
+      "001231",
+      "603968",
+      "600831",
+      "600851"
+    ],
+    "1": [
+      "000668",
+      "002917",
+      "002322",
+      "000995",
+      "000823",
+      "002184",
+      "603188",
+      "600802",
+      "000833",
+      "600847",
+      "603767",
+      "003037",
+      "600199",
+      "002549",
+      "002693",
+      "300107",
+      "000530",
+      "002640",
+      "002748",
+      "605058",
+      "600202",
+      "605258",
+      "601188",
+      "000715",
+      "301010",
+      "600593",
+      "603328",
+      "600853",
+      "603386",
+      "002639",
+      "001229",
+      "603956",
+      "301041",
+      "002579",
+      "002949",
+      "688655",
+      "603353",
+      "600237",
+      "600228",
+      "603466",
+      "002862",
+      "603001",
+      "603099",
+      "603980",
+      "002980",
+      "002878",
+      "001318",
+      "600391",
+      "002587",
+      "603042",
+      "000558",
+      "600712",
+      "600281",
+      "002430",
+      "002172",
+      "002811",
+      "002623"
+    ]
+  },
+  "industries": [
+    {
+      "name": "元件",
+      "count": 9,
+      "codes": [
+        "000823",
+        "605058",
+        "605258",
+        "603328",
+        "603386",
+        "301041",
+        "002579",
+        "688655",
+        "600237"
+      ]
+    },
+    {
+      "name": "化学制品",
+      "count": 7,
+      "codes": [
+        "002917",
+        "603188",
+        "603968",
+        "002549",
+        "300107",
+        "603980",
+        "002430"
+      ]
+    },
+    {
+      "name": "一般零售",
+      "count": 3,
+      "codes": [
+        "600693",
+        "000715",
+        "600712"
+      ]
+    },
+    {
+      "name": "旅游及景",
+      "count": 3,
+      "codes": [
+        "600593",
+        "603099",
+        "000558"
+      ]
+    },
+    {
+      "name": "通用设备",
+      "count": 3,
+      "codes": [
+        "000530",
+        "600202",
+        "002639"
+      ]
+    },
+    {
+      "name": "互联网电",
+      "count": 2,
+      "codes": [
+        "605136",
+        "002640"
+      ]
+    },
+    {
+      "name": "出版",
+      "count": 2,
+      "codes": [
+        "603096",
+        "605577"
+      ]
+    },
+    {
+      "name": "化学制药",
+      "count": 2,
+      "codes": [
+        "600851",
+        "002693"
+      ]
+    },
+    {
+      "name": "数字媒体",
+      "count": 2,
+      "codes": [
+        "600228",
+        "603466"
+      ]
+    },
+    {
+      "name": "水泥",
+      "count": 2,
+      "codes": [
+        "600802",
+        "003037"
+      ]
+    },
+    {
+      "name": "白酒Ⅱ",
+      "count": 2,
+      "codes": [
+        "000995",
+        "600199"
+      ]
+    },
+    {
+      "name": "专用设备",
+      "count": 1,
+      "codes": [
+        "603956"
+      ]
+    },
+    {
+      "name": "光伏设备",
+      "count": 1,
+      "codes": [
+        "002623"
+      ]
+    },
+    {
+      "name": "光学光电",
+      "count": 1,
+      "codes": [
+        "002587"
+      ]
+    },
+    {
+      "name": "农化制品",
+      "count": 1,
+      "codes": [
+        "001231"
+      ]
+    },
+    {
+      "name": "化学原料",
+      "count": 1,
+      "codes": [
+        "002748"
+      ]
+    },
+    {
+      "name": "医疗服务",
+      "count": 1,
+      "codes": [
+        "002172"
+      ]
+    },
+    {
+      "name": "基础建设",
+      "count": 1,
+      "codes": [
+        "600853"
+      ]
+    },
+    {
+      "name": "小金属",
+      "count": 1,
+      "codes": [
+        "600281"
+      ]
+    },
+    {
+      "name": "工程咨询",
+      "count": 1,
+      "codes": [
+        "002949"
+      ]
+    },
+    {
+      "name": "广告营销",
+      "count": 1,
+      "codes": [
+        "002878"
+      ]
+    },
+    {
+      "name": "影视院线",
+      "count": 1,
+      "codes": [
+        "002343"
+      ]
+    },
+    {
+      "name": "房地产开",
+      "count": 1,
+      "codes": [
+        "000668"
+      ]
+    },
+    {
+      "name": "文娱用品",
+      "count": 1,
+      "codes": [
+        "002862"
+      ]
+    },
+    {
+      "name": "服装家纺",
+      "count": 1,
+      "codes": [
+        "603001"
+      ]
+    },
+    {
+      "name": "汽车零部",
+      "count": 1,
+      "codes": [
+        "603767"
+      ]
+    },
+    {
+      "name": "炼化及贸",
+      "count": 1,
+      "codes": [
+        "603353"
+      ]
+    },
+    {
+      "name": "电池",
+      "count": 1,
+      "codes": [
+        "600847"
+      ]
+    },
+    {
+      "name": "电网设备",
+      "count": 1,
+      "codes": [
+        "002980"
+      ]
+    },
+    {
+      "name": "电视广播",
+      "count": 1,
+      "codes": [
+        "600831"
+      ]
+    },
+    {
+      "name": "综合Ⅱ",
+      "count": 1,
+      "codes": [
+        "000833"
+      ]
+    },
+    {
+      "name": "自动化设",
+      "count": 1,
+      "codes": [
+        "002184"
+      ]
+    },
+    {
+      "name": "航空装备",
+      "count": 1,
+      "codes": [
+        "600391"
+      ]
+    },
+    {
+      "name": "装修建材",
+      "count": 1,
+      "codes": [
+        "301010"
+      ]
+    },
+    {
+      "name": "装修装饰",
+      "count": 1,
+      "codes": [
+        "002811"
+      ]
+    },
+    {
+      "name": "计算机设",
+      "count": 1,
+      "codes": [
+        "001229"
+      ]
+    },
+    {
+      "name": "软件开发",
+      "count": 1,
+      "codes": [
+        "002322"
+      ]
+    },
+    {
+      "name": "通信设备",
+      "count": 1,
+      "codes": [
+        "603042"
+      ]
+    },
+    {
+      "name": "铁路公路",
+      "count": 1,
+      "codes": [
+        "601188"
+      ]
+    },
+    {
+      "name": "饮料乳品",
+      "count": 1,
+      "codes": [
+        "001318"
+      ]
+    },
+    {
+      "name": "饲料",
+      "count": 1,
+      "codes": [
+        "002696"
+      ]
+    }
+  ],
+  "stocks": [
+    {
+      "code": "000668",
+      "name": "荣丰控股",
+      "industry": "房地产开",
+      "boards": 1,
+      "firstSeal": "09:25:00",
+      "lastSeal": "09:25:00",
+      "limitStats": "1/1",
+      "turnover": 18497832.0,
+      "openCount": 0
+    },
+    {
+      "code": "002343",
+      "name": "慈文传媒",
+      "industry": "影视院线",
+      "boards": 3,
+      "firstSeal": "09:25:00",
+      "lastSeal": "09:25:00",
+      "limitStats": "3/3",
+      "turnover": 117455149.0,
+      "openCount": 0
+    },
+    {
+      "code": "002917",
+      "name": "金奥博",
+      "industry": "化学制品",
+      "boards": 1,
+      "firstSeal": "09:25:00",
+      "lastSeal": "09:36:48",
+      "limitStats": "1/1",
+      "turnover": 142022466.0,
+      "openCount": 1
+    },
+    {
+      "code": "603096",
+      "name": "新经典",
+      "industry": "出版",
+      "boards": 3,
+      "firstSeal": "09:25:00",
+      "lastSeal": "09:25:00",
+      "limitStats": "3/3",
+      "turnover": 90108761.0,
+      "openCount": 0
+    },
+    {
+      "code": "600693",
+      "name": "东百集团",
+      "industry": "一般零售",
+      "boards": 2,
+      "firstSeal": "09:25:01",
+      "lastSeal": "09:57:16",
+      "limitStats": "2/2",
+      "turnover": 2058068592.0,
+      "openCount": 4
+    },
+    {
+      "code": "002322",
+      "name": "理工能科",
+      "industry": "软件开发",
+      "boards": 1,
+      "firstSeal": "09:30:00",
+      "lastSeal": "10:07:03",
+      "limitStats": "1/1",
+      "turnover": 320103296.0,
+      "openCount": 1
+    },
+    {
+      "code": "605577",
+      "name": "龙版传媒",
+      "industry": "出版",
+      "boards": 3,
+      "firstSeal": "09:30:22",
+      "lastSeal": "13:01:13",
+      "limitStats": "5/4",
+      "turnover": 1116260384.0,
+      "openCount": 3
+    },
+    {
+      "code": "001231",
+      "name": "农心科技",
+      "industry": "农化制品",
+      "boards": 2,
+      "firstSeal": "09:30:27",
+      "lastSeal": "09:30:27",
+      "limitStats": "2/2",
+      "turnover": 269440096.0,
+      "openCount": 0
+    },
+    {
+      "code": "605136",
+      "name": "丽人丽妆",
+      "industry": "互联网电",
+      "boards": 3,
+      "firstSeal": "09:30:46",
+      "lastSeal": "09:30:46",
+      "limitStats": "3/3",
+      "turnover": 359252880.0,
+      "openCount": 0
+    },
+    {
+      "code": "000995",
+      "name": "皇台酒业",
+      "industry": "白酒Ⅱ",
+      "boards": 1,
+      "firstSeal": "09:31:21",
+      "lastSeal": "09:31:54",
+      "limitStats": "1/1",
+      "turnover": 167291678.0,
+      "openCount": 1
+    },
+    {
+      "code": "000823",
+      "name": "超声电子",
+      "industry": "元件",
+      "boards": 1,
+      "firstSeal": "09:31:54",
+      "lastSeal": "09:31:54",
+      "limitStats": "1/1",
+      "turnover": 899091408.0,
+      "openCount": 0
+    },
+    {
+      "code": "002184",
+      "name": "海得控制",
+      "industry": "自动化设",
+      "boards": 1,
+      "firstSeal": "09:32:12",
+      "lastSeal": "09:32:48",
+      "limitStats": "1/1",
+      "turnover": 186512812.0,
+      "openCount": 1
+    },
+    {
+      "code": "603188",
+      "name": "亚邦股份",
+      "industry": "化学制品",
+      "boards": 1,
+      "firstSeal": "09:32:57",
+      "lastSeal": "09:32:57",
+      "limitStats": "6/3",
+      "turnover": 166699377.0,
+      "openCount": 0
+    },
+    {
+      "code": "600802",
+      "name": "福建水泥",
+      "industry": "水泥",
+      "boards": 1,
+      "firstSeal": "09:33:54",
+      "lastSeal": "13:03:00",
+      "limitStats": "1/1",
+      "turnover": 692878288.0,
+      "openCount": 3
+    },
+    {
+      "code": "002696",
+      "name": "百洋股份",
+      "industry": "饲料",
+      "boards": 3,
+      "firstSeal": "09:34:09",
+      "lastSeal": "09:34:09",
+      "limitStats": "3/3",
+      "turnover": 308621376.0,
+      "openCount": 0
+    },
+    {
+      "code": "000833",
+      "name": "粤桂股份",
+      "industry": "综合Ⅱ",
+      "boards": 1,
+      "firstSeal": "09:34:12",
+      "lastSeal": "09:34:12",
+      "limitStats": "1/1",
+      "turnover": 724083280.0,
+      "openCount": 0
+    },
+    {
+      "code": "600847",
+      "name": "万里股份",
+      "industry": "电池",
+      "boards": 1,
+      "firstSeal": "09:34:34",
+      "lastSeal": "09:34:34",
+      "limitStats": "1/1",
+      "turnover": 75515922.0,
+      "openCount": 0
+    },
+    {
+      "code": "603767",
+      "name": "中马传动",
+      "industry": "汽车零部",
+      "boards": 1,
+      "firstSeal": "09:34:34",
+      "lastSeal": "09:35:34",
+      "limitStats": "1/1",
+      "turnover": 206590762.0,
+      "openCount": 1
+    },
+    {
+      "code": "003037",
+      "name": "三和管桩",
+      "industry": "水泥",
+      "boards": 1,
+      "firstSeal": "09:35:09",
+      "lastSeal": "09:35:30",
+      "limitStats": "1/1",
+      "turnover": 75443012.0,
+      "openCount": 1
+    },
+    {
+      "code": "603968",
+      "name": "醋化股份",
+      "industry": "化学制品",
+      "boards": 2,
+      "firstSeal": "09:36:33",
+      "lastSeal": "09:46:09",
+      "limitStats": "2/2",
+      "turnover": 403470992.0,
+      "openCount": 2
+    },
+    {
+      "code": "600831",
+      "name": "广电网络",
+      "industry": "电视广播",
+      "boards": 2,
+      "firstSeal": "09:39:06",
+      "lastSeal": "09:39:06",
+      "limitStats": "2/2",
+      "turnover": 322793008.0,
+      "openCount": 0
+    },
+    {
+      "code": "600199",
+      "name": "金种子酒",
+      "industry": "白酒Ⅱ",
+      "boards": 1,
+      "firstSeal": "09:45:49",
+      "lastSeal": "10:57:28",
+      "limitStats": "1/1",
+      "turnover": 454117968.0,
+      "openCount": 3
+    },
+    {
+      "code": "600851",
+      "name": "海欣股份",
+      "industry": "化学制药",
+      "boards": 2,
+      "firstSeal": "09:49:13",
+      "lastSeal": "13:24:46",
+      "limitStats": "2/2",
+      "turnover": 508799296.0,
+      "openCount": 3
+    },
+    {
+      "code": "002549",
+      "name": "凯美特气",
+      "industry": "化学制品",
+      "boards": 1,
+      "firstSeal": "09:54:06",
+      "lastSeal": "10:35:27",
+      "limitStats": "1/1",
+      "turnover": 889935296.0,
+      "openCount": 1
+    },
+    {
+      "code": "002693",
+      "name": "双成药业",
+      "industry": "化学制药",
+      "boards": 1,
+      "firstSeal": "09:58:03",
+      "lastSeal": "09:58:03",
+      "limitStats": "1/1",
+      "turnover": 316822224.0,
+      "openCount": 0
+    },
+    {
+      "code": "300107",
+      "name": "建新股份",
+      "industry": "化学制品",
+      "boards": 1,
+      "firstSeal": "09:59:57",
+      "lastSeal": "10:03:54",
+      "limitStats": "1/1",
+      "turnover": 591176944.0,
+      "openCount": 1
+    },
+    {
+      "code": "000530",
+      "name": "冰山冷热",
+      "industry": "通用设备",
+      "boards": 1,
+      "firstSeal": "10:09:06",
+      "lastSeal": "10:20:12",
+      "limitStats": "1/1",
+      "turnover": 288658928.0,
+      "openCount": 1
+    },
+    {
+      "code": "002640",
+      "name": "跨境通",
+      "industry": "互联网电",
+      "boards": 1,
+      "firstSeal": "10:13:24",
+      "lastSeal": "10:53:30",
+      "limitStats": "1/1",
+      "turnover": 990419760.0,
+      "openCount": 2
+    },
+    {
+      "code": "002748",
+      "name": "世龙实业",
+      "industry": "化学原料",
+      "boards": 1,
+      "firstSeal": "10:14:06",
+      "lastSeal": "10:16:36",
+      "limitStats": "1/1",
+      "turnover": 171376646.0,
+      "openCount": 1
+    },
+    {
+      "code": "605058",
+      "name": "澳弘电子",
+      "industry": "元件",
+      "boards": 1,
+      "firstSeal": "10:20:07",
+      "lastSeal": "10:36:58",
+      "limitStats": "17/10",
+      "turnover": 1071439248.0,
+      "openCount": 2
+    },
+    {
+      "code": "600202",
+      "name": "哈空调",
+      "industry": "通用设备",
+      "boards": 1,
+      "firstSeal": "10:35:30",
+      "lastSeal": "10:35:30",
+      "limitStats": "1/1",
+      "turnover": 157008710.0,
+      "openCount": 0
+    },
+    {
+      "code": "605258",
+      "name": "协和电子",
+      "industry": "元件",
+      "boards": 1,
+      "firstSeal": "10:39:18",
+      "lastSeal": "10:40:27",
+      "limitStats": "1/1",
+      "turnover": 209836403.0,
+      "openCount": 1
+    },
+    {
+      "code": "601188",
+      "name": "龙江交通",
+      "industry": "铁路公路",
+      "boards": 1,
+      "firstSeal": "10:48:37",
+      "lastSeal": "10:48:37",
+      "limitStats": "1/1",
+      "turnover": 222681868.0,
+      "openCount": 0
+    },
+    {
+      "code": "000715",
+      "name": "中兴商业",
+      "industry": "一般零售",
+      "boards": 1,
+      "firstSeal": "10:52:24",
+      "lastSeal": "10:52:24",
+      "limitStats": "1/1",
+      "turnover": 153662345.0,
+      "openCount": 0
+    },
+    {
+      "code": "301010",
+      "name": "晶雪节能",
+      "industry": "装修建材",
+      "boards": 1,
+      "firstSeal": "10:55:21",
+      "lastSeal": "10:55:48",
+      "limitStats": "1/1",
+      "turnover": 333320112.0,
+      "openCount": 1
+    },
+    {
+      "code": "600593",
+      "name": "大连圣亚",
+      "industry": "旅游及景",
+      "boards": 1,
+      "firstSeal": "10:56:14",
+      "lastSeal": "10:56:14",
+      "limitStats": "1/1",
+      "turnover": 560508816.0,
+      "openCount": 0
+    },
+    {
+      "code": "603328",
+      "name": "依顿电子",
+      "industry": "元件",
+      "boards": 1,
+      "firstSeal": "11:00:04",
+      "lastSeal": "11:00:04",
+      "limitStats": "1/1",
+      "turnover": 703554112.0,
+      "openCount": 0
+    },
+    {
+      "code": "600853",
+      "name": "龙建股份",
+      "industry": "基础建设",
+      "boards": 1,
+      "firstSeal": "11:07:51",
+      "lastSeal": "11:17:42",
+      "limitStats": "1/1",
+      "turnover": 248026634.0,
+      "openCount": 2
+    },
+    {
+      "code": "603386",
+      "name": "骏亚科技",
+      "industry": "元件",
+      "boards": 1,
+      "firstSeal": "11:10:14",
+      "lastSeal": "11:10:14",
+      "limitStats": "1/1",
+      "turnover": 189429301.0,
+      "openCount": 0
+    },
+    {
+      "code": "002639",
+      "name": "雪人集团",
+      "industry": "通用设备",
+      "boards": 1,
+      "firstSeal": "11:18:06",
+      "lastSeal": "11:18:06",
+      "limitStats": "1/1",
+      "turnover": 1296895584.0,
+      "openCount": 0
+    },
+    {
+      "code": "001229",
+      "name": "魅视科技",
+      "industry": "计算机设",
+      "boards": 1,
+      "firstSeal": "11:18:18",
+      "lastSeal": "11:18:18",
+      "limitStats": "1/1",
+      "turnover": 289364592.0,
+      "openCount": 0
+    },
+    {
+      "code": "603956",
+      "name": "威派格",
+      "industry": "专用设备",
+      "boards": 1,
+      "firstSeal": "11:24:06",
+      "lastSeal": "15:00:00",
+      "limitStats": "1/1",
+      "turnover": 593641456.0,
+      "openCount": 4
+    },
+    {
+      "code": "301041",
+      "name": "金百泽",
+      "industry": "元件",
+      "boards": 1,
+      "firstSeal": "11:27:15",
+      "lastSeal": "11:27:15",
+      "limitStats": "1/1",
+      "turnover": 410407024.0,
+      "openCount": 0
+    },
+    {
+      "code": "002579",
+      "name": "中京电子",
+      "industry": "元件",
+      "boards": 1,
+      "firstSeal": "11:27:36",
+      "lastSeal": "11:27:36",
+      "limitStats": "1/1",
+      "turnover": 1263571232.0,
+      "openCount": 0
+    },
+    {
+      "code": "002949",
+      "name": "华阳国际",
+      "industry": "工程咨询",
+      "boards": 1,
+      "firstSeal": "11:28:48",
+      "lastSeal": "11:28:48",
+      "limitStats": "1/1",
+      "turnover": 173564654.0,
+      "openCount": 0
+    },
+    {
+      "code": "688655",
+      "name": "迅捷兴",
+      "industry": "元件",
+      "boards": 1,
+      "firstSeal": "11:29:31",
+      "lastSeal": "14:42:37",
+      "limitStats": "1/1",
+      "turnover": 1144112736.0,
+      "openCount": 3
+    },
+    {
+      "code": "603353",
+      "name": "和顺石油",
+      "industry": "炼化及贸",
+      "boards": 1,
+      "firstSeal": "13:00:10",
+      "lastSeal": "13:00:10",
+      "limitStats": "1/1",
+      "turnover": 342433488.0,
+      "openCount": 0
+    },
+    {
+      "code": "600237",
+      "name": "铜峰电子",
+      "industry": "元件",
+      "boards": 1,
+      "firstSeal": "13:00:42",
+      "lastSeal": "13:00:42",
+      "limitStats": "1/1",
+      "turnover": 441778128.0,
+      "openCount": 0
+    },
+    {
+      "code": "600228",
+      "name": "返利科技",
+      "industry": "数字媒体",
+      "boards": 1,
+      "firstSeal": "13:01:36",
+      "lastSeal": "13:01:36",
+      "limitStats": "1/1",
+      "turnover": 237987684.0,
+      "openCount": 0
+    },
+    {
+      "code": "603466",
+      "name": "风语筑",
+      "industry": "数字媒体",
+      "boards": 1,
+      "firstSeal": "13:01:53",
+      "lastSeal": "13:01:53",
+      "limitStats": "1/1",
+      "turnover": 1305658880.0,
+      "openCount": 0
+    },
+    {
+      "code": "002862",
+      "name": "实丰文化",
+      "industry": "文娱用品",
+      "boards": 1,
+      "firstSeal": "13:02:15",
+      "lastSeal": "13:02:15",
+      "limitStats": "1/1",
+      "turnover": 158622485.0,
+      "openCount": 0
+    },
+    {
+      "code": "603001",
+      "name": "奥康国际",
+      "industry": "服装家纺",
+      "boards": 1,
+      "firstSeal": "13:03:23",
+      "lastSeal": "13:03:23",
+      "limitStats": "1/1",
+      "turnover": 157810634.0,
+      "openCount": 0
+    },
+    {
+      "code": "603099",
+      "name": "长白山",
+      "industry": "旅游及景",
+      "boards": 1,
+      "firstSeal": "13:04:45",
+      "lastSeal": "14:46:21",
+      "limitStats": "1/1",
+      "turnover": 1065450352.0,
+      "openCount": 1
+    },
+    {
+      "code": "603980",
+      "name": "吉华集团",
+      "industry": "化学制品",
+      "boards": 1,
+      "firstSeal": "13:05:57",
+      "lastSeal": "13:45:06",
+      "limitStats": "1/1",
+      "turnover": 1012161440.0,
+      "openCount": 1
+    },
+    {
+      "code": "002980",
+      "name": "华盛昌",
+      "industry": "电网设备",
+      "boards": 1,
+      "firstSeal": "13:06:15",
+      "lastSeal": "13:06:15",
+      "limitStats": "1/1",
+      "turnover": 1805614144.0,
+      "openCount": 0
+    },
+    {
+      "code": "002878",
+      "name": "元隆雅图",
+      "industry": "广告营销",
+      "boards": 1,
+      "firstSeal": "13:06:39",
+      "lastSeal": "13:07:18",
+      "limitStats": "1/1",
+      "turnover": 300729376.0,
+      "openCount": 1
+    },
+    {
+      "code": "001318",
+      "name": "阳光乳业",
+      "industry": "饮料乳品",
+      "boards": 1,
+      "firstSeal": "13:09:03",
+      "lastSeal": "13:09:51",
+      "limitStats": "1/1",
+      "turnover": 352543296.0,
+      "openCount": 1
+    },
+    {
+      "code": "600391",
+      "name": "航发科技",
+      "industry": "航空装备",
+      "boards": 1,
+      "firstSeal": "13:09:06",
+      "lastSeal": "13:13:00",
+      "limitStats": "1/1",
+      "turnover": 804911104.0,
+      "openCount": 2
+    },
+    {
+      "code": "002587",
+      "name": "奥拓电子",
+      "industry": "光学光电",
+      "boards": 1,
+      "firstSeal": "13:12:39",
+      "lastSeal": "14:52:15",
+      "limitStats": "1/1",
+      "turnover": 347602928.0,
+      "openCount": 4
+    },
+    {
+      "code": "603042",
+      "name": "华脉科技",
+      "industry": "通信设备",
+      "boards": 1,
+      "firstSeal": "13:22:09",
+      "lastSeal": "13:22:09",
+      "limitStats": "1/1",
+      "turnover": 407590016.0,
+      "openCount": 0
+    },
+    {
+      "code": "000558",
+      "name": "天府文旅",
+      "industry": "旅游及景",
+      "boards": 1,
+      "firstSeal": "13:23:30",
+      "lastSeal": "13:23:30",
+      "limitStats": "1/1",
+      "turnover": 199945797.0,
+      "openCount": 0
+    },
+    {
+      "code": "600712",
+      "name": "南宁百货",
+      "industry": "一般零售",
+      "boards": 1,
+      "firstSeal": "13:28:05",
+      "lastSeal": "13:28:05",
+      "limitStats": "1/1",
+      "turnover": 155774758.0,
+      "openCount": 0
+    },
+    {
+      "code": "600281",
+      "name": "华阳新材",
+      "industry": "小金属",
+      "boards": 1,
+      "firstSeal": "13:39:37",
+      "lastSeal": "13:39:37",
+      "limitStats": "1/1",
+      "turnover": 133774703.0,
+      "openCount": 0
+    },
+    {
+      "code": "002430",
+      "name": "杭氧股份",
+      "industry": "化学制品",
+      "boards": 1,
+      "firstSeal": "13:45:12",
+      "lastSeal": "14:01:54",
+      "limitStats": "1/1",
+      "turnover": 1214131072.0,
+      "openCount": 1
+    },
+    {
+      "code": "002172",
+      "name": "澳洋健康",
+      "industry": "医疗服务",
+      "boards": 1,
+      "firstSeal": "13:47:27",
+      "lastSeal": "13:47:27",
+      "limitStats": "1/1",
+      "turnover": 913642880.0,
+      "openCount": 0
+    },
+    {
+      "code": "002811",
+      "name": "郑中设计",
+      "industry": "装修装饰",
+      "boards": 1,
+      "firstSeal": "13:52:51",
+      "lastSeal": "13:52:51",
+      "limitStats": "3/2",
+      "turnover": 495051312.0,
+      "openCount": 0
+    },
+    {
+      "code": "002623",
+      "name": "亚玛顿",
+      "industry": "光伏设备",
+      "boards": 1,
+      "firstSeal": "14:28:45",
+      "lastSeal": "14:28:45",
+      "limitStats": "1/1",
+      "turnover": 227013672.0,
+      "openCount": 0
+    }
+  ],
+  "down": [
+    {
+      "code": "603230",
+      "name": "内蒙新华",
+      "industry": "出版"
+    },
+    {
+      "code": "001336",
+      "name": "楚环科技",
+      "industry": "环保设备"
+    },
+    {
+      "code": "002487",
+      "name": "大金重工",
+      "industry": "风电设备"
+    },
+    {
+      "code": "002058",
+      "name": "紫竹高科",
+      "industry": "电池"
+    },
+    {
+      "code": "603668",
+      "name": "天马科技",
+      "industry": "饲料"
+    },
+    {
+      "code": "002768",
+      "name": "国恩股份",
+      "industry": "塑料"
+    },
+    {
+      "code": "600812",
+      "name": "华北制药",
+      "industry": "化学制药"
+    },
+    {
+      "code": "002866",
+      "name": "传艺科技",
+      "industry": "消费电子"
+    }
+  ],
+  "broken": [
+    {
+      "code": "002692",
+      "name": "远程股份",
+      "industry": "电网设备"
+    },
+    {
+      "code": "605287",
+      "name": "德才股份",
+      "industry": "装修装饰"
+    },
+    {
+      "code": "603528",
+      "name": "多伦科技",
+      "industry": "软件开发"
+    },
+    {
+      "code": "600318",
+      "name": "新力金融",
+      "industry": "多元金融"
+    },
+    {
+      "code": "600408",
+      "name": "安泰集团",
+      "industry": "焦炭Ⅱ"
+    },
+    {
+      "code": "002961",
+      "name": "瑞达期货",
+      "industry": "多元金融"
+    },
+    {
+      "code": "603216",
+      "name": "梦天家居",
+      "industry": "家居用品"
+    },
+    {
+      "code": "603578",
+      "name": "三星新材",
+      "industry": "家电零部"
+    },
+    {
+      "code": "300929",
+      "name": "华骐环保",
+      "industry": "环境治理"
+    },
+    {
+      "code": "688004",
+      "name": "博汇科技",
+      "industry": "IT服务Ⅱ"
+    },
+    {
+      "code": "301313",
+      "name": "凡拓数创",
+      "industry": "数字媒体"
+    },
+    {
+      "code": "002354",
+      "name": "天娱数科",
+      "industry": "广告营销"
+    },
+    {
+      "code": "002913",
+      "name": "奥士康",
+      "industry": "元件"
+    },
+    {
+      "code": "600316",
+      "name": "洪都航空",
+      "industry": "航空装备"
+    },
+    {
+      "code": "002425",
+      "name": "凯撒文化",
+      "industry": "游戏Ⅱ"
+    },
+    {
+      "code": "002724",
+      "name": "海洋王",
+      "industry": "照明设备"
+    },
+    {
+      "code": "603669",
+      "name": "灵康药业",
+      "industry": "化学制药"
+    },
+    {
+      "code": "002086",
+      "name": "东方海洋",
+      "industry": "农产品加"
+    },
+    {
+      "code": "603661",
+      "name": "恒林股份",
+      "industry": "家居用品"
+    }
+  ],
+  "lhb": [
+    {
+      "code": "001231",
+      "name": "农心科技",
+      "reason": "连续三个交易日内，涨幅偏离值累计达到20%的证券",
+      "netBuy": -36250426.64
+    },
+    {
+      "code": "002430",
+      "name": "杭氧股份",
+      "reason": "日涨幅偏离值达到7%的前5只证券",
+      "netBuy": 82743175.52
+    },
+    {
+      "code": "002579",
+      "name": "中京电子",
+      "reason": "日振幅值达到15%的前5只证券",
+      "netBuy": -9357839.19
+    },
+    {
+      "code": "002639",
+      "name": "雪人集团",
+      "reason": "日涨幅偏离值达到7%的前5只证券",
+      "netBuy": 133289730.25
+    },
+    {
+      "code": "002640",
+      "name": "跨境通",
+      "reason": "日涨幅偏离值达到7%的前5只证券",
+      "netBuy": 122855610.89
+    },
+    {
+      "code": "002811",
+      "name": "郑中设计",
+      "reason": "连续三个交易日内，涨幅偏离值累计达到20%的证券",
+      "netBuy": -14099047.15
+    },
+    {
+      "code": "002980",
+      "name": "华盛昌",
+      "reason": "日涨幅偏离值达到7%的前5只证券",
+      "netBuy": 36630394.83
+    },
+    {
+      "code": "300107",
+      "name": "建新股份",
+      "reason": "日涨幅达到15%的前5只证券",
+      "netBuy": 32759310.08
+    },
+    {
+      "code": "301010",
+      "name": "晶雪节能",
+      "reason": "日涨幅达到15%的前5只证券",
+      "netBuy": 18826153.6
+    },
+    {
+      "code": "301041",
+      "name": "金百泽",
+      "reason": "日涨幅达到15%的前5只证券",
+      "netBuy": 29552894.1
+    },
+    {
+      "code": "600202",
+      "name": "哈空调",
+      "reason": "有价格涨跌幅限制的日收盘价格涨幅偏离值达到7%的前五只证券",
+      "netBuy": 22586533.0
+    },
+    {
+      "code": "600712",
+      "name": "南宁百货",
+      "reason": "有价格涨跌幅限制的日收盘价格涨幅偏离值达到7%的前五只证券",
+      "netBuy": 13582669.0
+    },
+    {
+      "code": "600831",
+      "name": "广电网络",
+      "reason": "非S证券连续三个交易日内收盘价格涨幅偏离值累计达到20%的证券",
+      "netBuy": 4377822.31999999
+    },
+    {
+      "code": "600847",
+      "name": "万里股份",
+      "reason": "有价格涨跌幅限制的日收盘价格涨幅偏离值达到7%的前五只证券",
+      "netBuy": 28274712.88
+    },
+    {
+      "code": "600851",
+      "name": "海欣股份",
+      "reason": "非S证券连续三个交易日内收盘价格涨幅偏离值累计达到20%的证券",
+      "netBuy": 12283886.99
+    },
+    {
+      "code": "603188",
+      "name": "亚邦股份",
+      "reason": "有价格涨跌幅限制的日收盘价格涨幅偏离值达到7%的前五只证券",
+      "netBuy": 45006263.0
+    },
+    {
+      "code": "603386",
+      "name": "骏亚科技",
+      "reason": "有价格涨跌幅限制的日价格振幅达到15%的前五只证券",
+      "netBuy": 25876436.0
+    },
+    {
+      "code": "603968",
+      "name": "醋化股份",
+      "reason": "非S证券连续三个交易日内收盘价格涨幅偏离值累计达到20%的证券",
+      "netBuy": 49924076.63
+    },
+    {
+      "code": "605058",
+      "name": "澳弘电子",
+      "reason": "非S证券连续三个交易日内收盘价格涨幅偏离值累计达到20%的证券",
+      "netBuy": -21422534.52
+    },
+    {
+      "code": "688655",
+      "name": "迅捷兴",
+      "reason": "有价格涨跌幅限制的日收盘价格涨幅达到15%的前五只证券",
+      "netBuy": 49621807.77
+    }
+  ]
+}
