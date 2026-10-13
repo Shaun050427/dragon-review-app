@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ExitPlan, LiquidityEnvironment } from "@/app/liquidity-discipline";
+import { TradeCertainty } from "@/app/trade-certainty";
 
 type Props = {
   fields: Record<string, string>;
@@ -106,6 +107,7 @@ export function StrategyWorkbench({ fields: f, onChange }: Props) {
     </section>
 
     <LiquidityEnvironment fields={f} onChange={onChange} />
+    <TradeCertainty fields={f} onChange={onChange} />
 
     <section className="strategy-grid">
       {strategies.map((item) => {

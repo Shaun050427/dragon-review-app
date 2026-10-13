@@ -18,6 +18,8 @@ import { EffectObserver } from "@/app/effect-observer";
 import { StrategyWorkbench } from "@/app/strategy-workbench";
 import { ExitReview, HoldingExecution } from "@/app/liquidity-discipline";
 import { liquidityPlanIssues } from "@/lib/liquidity-plan";
+import { certaintyPlanIssues } from "@/lib/trade-certainty";
+import { CertaintyReview } from "@/app/trade-certainty";
 
 type Payload = { fields: Record<string, string>; checks: Record<string, boolean> };
 type CloudRecord = { date: string; payload: Payload; revision: string; updatedAt: string; device?: string };
@@ -49,6 +51,9 @@ const defaultPayload = (): Payload => ({
     exitThesis: "未选择", exitReducePct: "", exitRiskLimit: "", exitRemainder: "", holdingConditions: "",
     holdingStage: "未判断", holdingAction: "未记录", holdingSignalTime: "", holdingActionTime: "", holdingEvidence: "", holdingPlanChange: "", holdingExecution: "",
     exitDelayCause: "待判断", exitProcessGrade: "待评价", exitFirstInvalidation: "", exitCounterexample: "", exitResearchConclusion: "",
+    certainty_cycle_status: "待核对", certainty_cycle_evidence: "", certainty_consensus_status: "待核对", certainty_consensus_evidence: "", certainty_supply_status: "待核对", certainty_supply_evidence: "", certainty_payoff_status: "待核对", certainty_payoff_evidence: "",
+    entryMechanism: "未选择", entryMechanismOther: "", certaintyExecutable: "待核对", certaintyExecutionEvidence: "", certaintyWinPct: "", certaintyAverageWinR: "", certaintyAverageLossR: "", certaintyCostR: "", certaintyEstimateBasis: "",
+    certaintyReviewMismatch: "", certaintyCases: "", panicAverageBasis: "",
     redlineStatus: "关闭", redlineCandidate: "", redlineRole: "未确认", redlineTrigger: "", redlineInvalidation: "", redlineRewardPct: "", redlineRiskR: "1",
     releaseStatus: "关闭", releaseCandidate: "", releaseRole: "未确认", releaseTrigger: "", releaseInvalidation: "", releaseRewardPct: "", releaseRiskR: "1",
     returnStatus: "关闭", returnCandidate: "", returnRole: "未确认", returnTrigger: "", returnInvalidation: "", returnRewardPct: "", returnRiskR: "1",
@@ -62,6 +67,7 @@ const gateChecks = [
   ["gate_phase", "周期阶段仍允许该模式"],
   ["gate_environment", "大盘量能、涨跌家数及同题材/同模式核心未触发环境否决"],
   ["gate_liquidity", "已核对同时间量能、承接证据，并完成交易票与退出卡"],
+  ["gate_certainty", "四要素与入场机制已有支持证据，可执行性及低吸条件链（如适用）已核对"],
   ["gate_leader", "开盘后地位增强，而非只有个股高开"],
   ["gate_sector", "中军、梯队或新增首板至少一项确认"],
   ["gate_profit_effect", "同模式仍有赚钱效应；没有把监管空间误当成新增买盘"],
@@ -83,6 +89,8 @@ const disciplineChecks = [
   ["disc_risk_fixed", "未因浮亏扩大风险上限，变更预案有新增证据"],
   ["disc_hold_evidence", "继续持有有证据，未只因回本或回封愿望锁仓"],
   ["disc_process", "按执行质量评价，未用后来回封或跌停替代当时判断"],
+  ["disc_certainty", "没有用漂亮形态、单次成功或未知胜率代替四要素证据"],
+  ["disc_counterexample", "同时记录失败/待观察样本，没有只挑成功的均线修复"],
 ];
 
 function isoToday() {
@@ -351,7 +359,8 @@ export function DashboardClient() {
   const selectedSetup = [f.allowedSetup, f.allowedSetup2, f.allowedSetup3][selectedIndex];
   const selectedInvalidations = [f.invalidations, f.invalidations2, f.invalidations3][selectedIndex];
   const liquidityIssues = liquidityPlanIssues(f);
-  const gatePassed = gateChecks.every(([key]) => payload.checks[key]) && liquidityIssues.length === 0 && f.ticketStock === f.executionCandidate && f.tradeMode !== "空仓观察" && selectedIndex >= 0 && Boolean(selectedSetup?.trim()) && Boolean(selectedInvalidations?.trim()) && Number(f.maxPosition) > 0;
+  const certaintyIssues = certaintyPlanIssues(f);
+  const gatePassed = gateChecks.every(([key]) => payload.checks[key]) && liquidityIssues.length === 0 && certaintyIssues.length === 0 && f.ticketStock === f.executionCandidate && f.tradeMode !== "空仓观察" && selectedIndex >= 0 && Boolean(selectedSetup?.trim()) && Boolean(selectedInvalidations?.trim()) && Number(f.maxPosition) > 0;
 
   if (!connected) {
     const set = (key: keyof typeof setup, value: string | boolean) => setSetup((current) => ({ ...current, [key]: value }));
@@ -388,9 +397,9 @@ export function DashboardClient() {
         </TabsContent>
         <TabsContent value="opening" className="panel-grid"><HoldingExecution fields={f} onChange={updateField} /><YesterdayPremium /><Card className="span-12"><CardHeader><CardTitle>新增交易的30分钟时间锁 · 持仓退出全天执行</CardTitle></CardHeader><CardContent className="time-grid"><div><strong>9:30—9:35</strong><span>只观察</span><p>新增交易观察总龙承接、竞价兑现、梯队与竞争板块；持仓触发退出条件时不受观察窗口限制。</p></div><div><strong>9:35—9:50</strong><span>唯一执行窗</span><p>只执行三个预设候选中的一只；全部证伪则空仓。</p></div><div><strong>9:50—10:00</strong><span>锁单与退出</span><p>处理撤单并记录；10:00后不临时开新仓，已有持仓仍按退出预案处理。</p></div></CardContent></Card>
           <Card className="span-7"><CardHeader><CardTitle>开盘事实与动作</CardTitle></CardHeader><CardContent className="form-grid two"><Field label="9:25竞价"><Textarea value={f.auction} onChange={(e) => updateField("auction", e.target.value)} /></Field><Field label="9:30—9:35总龙承接"><Textarea value={f.firstFive} onChange={(e) => updateField("firstFive", e.target.value)} /></Field><Field label="竞争者实际表现"><Textarea value={f.openingRivals} onChange={(e) => updateField("openingRivals", e.target.value)} /></Field><Field label="与昨晚预案偏差"><Textarea value={f.planDelta} onChange={(e) => updateField("planDelta", e.target.value)} /></Field><Field label="最终动作"><Select value={f.action} onValueChange={(v) => updateField("action", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["空仓","买入","持有","减仓","清仓"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field><Field label="实际仓位 %"><Input type="number" value={f.actualPosition} onChange={(e) => updateField("actualPosition", e.target.value)} /></Field><Field label="执行价格 / 原因 / 证据"><Textarea value={f.executionNote} onChange={(e) => updateField("executionNote", e.target.value)} /></Field></CardContent></Card>
-          <Card className={`span-5 gate-card ${gatePassed ? "pass" : "stop"}`}><CardHeader><CardTitle>下单授权闸门</CardTitle></CardHeader><CardContent className="check-list"><Field label="今日选择执行哪只候选"><Select value={f.executionCandidate || "none"} onValueChange={(v) => updateField("executionCandidate", v === "none" ? "" : v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">未选择 · 空仓</SelectItem>{candidates.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent></Select></Field>{gateChecks.map((item) => <CheckItem key={item[0]} item={item} checked={Boolean(payload.checks[item[0]])} onChange={(v) => updateCheck(item[0], v)} />)}<p className="liquidity-note">{liquidityIssues.length ? liquidityIssues.join("；") : "量能与退出卡已填写，继续核对其他条件。"}{f.ticketStock !== f.executionCandidate ? "；交易票标的必须与执行候选一致" : ""}</p><div className="gate-result">{gatePassed ? <><Check />允许执行：仅限 {f.executionCandidate}，仓位≤{f.maxPosition}%</> : <><AlertTriangle />默认不下单：条件尚未全部满足</>}</div></CardContent></Card>
+          <Card className={`span-5 gate-card ${gatePassed ? "pass" : "stop"}`}><CardHeader><CardTitle>下单授权闸门</CardTitle></CardHeader><CardContent className="check-list"><Field label="今日选择执行哪只候选"><Select value={f.executionCandidate || "none"} onValueChange={(v) => updateField("executionCandidate", v === "none" ? "" : v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">未选择 · 空仓</SelectItem>{candidates.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent></Select></Field>{gateChecks.map((item) => <CheckItem key={item[0]} item={item} checked={Boolean(payload.checks[item[0]])} onChange={(v) => updateCheck(item[0], v)} />)}<p className="liquidity-note">{liquidityIssues.length ? liquidityIssues.join("；") : "量能与退出卡已填写，继续核对其他条件。"}{f.ticketStock !== f.executionCandidate ? "；交易票标的必须与执行候选一致" : ""}</p><p className="liquidity-note">{certaintyIssues.length ? certaintyIssues.join("；") : "四要素与入场机制已核对，填写完整不代表已验证优势。"}</p><div className="gate-result">{gatePassed ? <><Check />允许执行：仅限 {f.executionCandidate}，仓位≤{f.maxPosition}%</> : <><AlertTriangle />默认不下单：条件尚未全部满足</>}</div></CardContent></Card>
         </TabsContent>
-        <TabsContent value="review" className="panel-grid"><ExitReview fields={f} onChange={updateField} />
+        <TabsContent value="review" className="panel-grid"><ExitReview fields={f} onChange={updateField} /><CertaintyReview fields={f} onChange={updateField} />
           <Card className="span-6"><CardHeader><CardTitle>交易与纠偏</CardTitle></CardHeader><CardContent className="form-grid"><Field label="买卖理由与实际偏差"><Textarea value={f.tradeReview} onChange={(e) => updateField("tradeReview", e.target.value)} /></Field><Field label="如果重来，只改一个动作"><Textarea value={f.oneChange} onChange={(e) => updateField("oneChange", e.target.value)} /></Field><Field label="错误标签"><Select value={f.errorTag} onValueChange={(v) => updateField("errorTag", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["无","计划外交易","非预设候选","价格到位即满仓","环境否决后仍加仓","拥挤/节前风险漏算","逻辑漂移","追加速","退潮接力","后排套利","仓位超限","证伪后不撤","超时开仓","卖点拖延","同时间量能未核对","加速失败仍按成功预期持仓","因浮亏扩大风险预算","等待回本/回封锁仓","结果替代过程评价"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field><Field label="明日唯一纠偏"><Textarea value={f.correction} onChange={(e) => updateField("correction", e.target.value)} /></Field></CardContent></Card>
           <Card className="span-12"><CardHeader><CardTitle>过程纪律打卡</CardTitle></CardHeader><CardContent className="discipline-grid">{disciplineChecks.map((item) => <CheckItem key={item[0]} item={item} checked={Boolean(payload.checks[item[0]])} onChange={(v) => updateCheck(item[0], v)} />)}</CardContent></Card>
         </TabsContent>

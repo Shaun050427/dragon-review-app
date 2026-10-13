@@ -238,6 +238,14 @@ button, input, textarea { font: inherit; }
 .liquidity-events { display: grid; gap: 14px; }
 .liquidity-events > div { padding: 14px; border: 1px solid var(--border); border-radius: 10px; }
 .liquidity-events strong { display: block; margin-bottom: 12px; }
+.certainty-factor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.certainty-factor { display: grid; align-content: start; gap: 12px; padding: 15px; border: 1px solid var(--border); border-radius: 12px; }
+.certainty-factor > strong, .certainty-panic > strong { color: var(--primary); }
+.certainty-panic { display: grid; gap: 14px; padding: 15px; border: 1px solid rgb(255 209 102 / 30%); border-radius: 12px; }
+.certainty-case-table { min-width: 1100px; width: 100%; border-collapse: collapse; font-size: 13px; }
+.certainty-case-table td, .certainty-case-table th { padding: 8px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+.certainty-case-table textarea { min-width: 140px; min-height: 90px; }
+@media (max-width: 720px) { .certainty-factor-grid { grid-template-columns: 1fr; } }
 .command-strip { display: flex; align-items: stretch; justify-content: space-between; gap: 18px; padding: 16px 18px; border: 1px solid rgb(84 210 255 / 32%); border-radius: 16px; background: linear-gradient(120deg, rgb(84 210 255 / 10%), rgb(131 243 189 / 5%)); }
 .command-title { display: grid; align-content: center; min-width: 340px; }
 .command-title p { margin: 0; color: var(--muted-foreground); font-size: 12px; font-weight: 800; letter-spacing: .12em; }
