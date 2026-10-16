@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { ExitPlan, LiquidityEnvironment } from "@/app/liquidity-discipline";
 import { TradeCertainty } from "@/app/trade-certainty";
+import { accountRisk } from "@/lib/strategy-research";
 
 type Props = {
   fields: Record<string, string>;
@@ -55,9 +56,20 @@ const strategies: Strategy[] = [
     subtitle: "龙头记忆 · 反抽/二波",
     accent: "amber",
     environments: "冰点修复 / 修复转上升",
-    buy: "缩量止跌、关键位守住后首次主动转强；不接第一次暴跌",
+    buy: "主跌释放后首次靠近MA20/MA30，继续杀跌有承接、同伴止跌，再观察首次主动转强；记录复权及动态均线口径",
     sell: "反抽卖压力位；只有重新带动板块，才升级为二波",
-    warning: "区分反抽与二波；强势反抽次日竞价明显低于预期，开盘不能修复则原理由失效。-3%只作观察阈值，不作自动卖点。",
+    warning: "均线不是自动买点；反抽兑现不自动升级二波。新增消息与纯价格修复分开归因，均线失守反例也登记。强势反抽次日竞价明显低于预期且不能修复，重新检查原理由。",
+  },
+  {
+    id: "steps",
+    code: "CS-2",
+    name: "小碎步阳线潜伏",
+    subtitle: "研究模式 · 尚待样本验证",
+    accent: "cyan",
+    environments: "有题材预期、同伴响应的缩量整理；避开高位连续加速",
+    buy: "候选观察：前序有辨识度和充分换手，近3—7日多数小阳、低点抬高、振幅收敛；突破时再核对主动放量",
+    sell: "入场前写等待交易日数、压力位和时间截止；未启动到期复查或退出，跌破整理区且不能收回则证伪",
+    warning: "3—7日是待验证筛选假设；排除下跌中继和无量弱反弹。潜伏与突破追入分开记录，纳入假突破、未启动和最大不利波动。",
   },
   {
     id: "shape",
@@ -91,6 +103,7 @@ export function StrategyWorkbench({ fields: f, onChange }: Props) {
   const dailyLossLimit = riskCny * dailyR;
   const activeStrategies = strategies.filter((item) => !["", "关闭", "兑现", "证伪"].includes(f[`${item.id}Status`] ?? "关闭")).length;
   const originalReason = f.ticketStrategy ?? "未选择";
+  const risk = accountRisk(f);
 
   return <div className="strategy-workbench">
     <section className="command-strip">
@@ -100,7 +113,7 @@ export function StrategyWorkbench({ fields: f, onChange }: Props) {
       </div>
       <div className="command-facts">
         <div><span>允许环境</span><b>{f.cyclePhase || "未判断"}</b></div>
-        <div><span>激活模式</span><b>{activeStrategies} / 4</b></div>
+        <div><span>激活模式（含研究）</span><b>{activeStrategies} / {strategies.length}</b></div>
         <div><span>单笔 1R</span><b>¥{riskCny.toFixed(0)}</b></div>
         <div><span>日内熔断</span><b>¥{dailyLossLimit.toFixed(0)}</b></div>
       </div>
@@ -131,6 +144,12 @@ export function StrategyWorkbench({ fields: f, onChange }: Props) {
               <Field label="触发条件"><Textarea value={f[`${item.id}Trigger`] ?? ""} onChange={(e) => onChange(`${item.id}Trigger`, e.target.value)} placeholder="价格、量能、板块与时间条件" /></Field>
               <Field label="证伪条件"><Textarea value={f[`${item.id}Invalidation`] ?? ""} onChange={(e) => onChange(`${item.id}Invalidation`, e.target.value)} placeholder="出现即结束，不得改叙事" /></Field>
             </div>
+            {item.id === "steps" && <div className="form-grid two">
+              <Field label="最长等待交易日数"><Input type="number" min="1" step="1" value={f.stepsWaitDays ?? ""} onChange={(e) => onChange("stepsWaitDays", e.target.value)} placeholder="入场前设定" /></Field>
+              <Field label="时间截止 / 到期动作"><Input value={f.stepsDeadline ?? ""} onChange={(e) => onChange("stepsDeadline", e.target.value)} placeholder="何时未启动就退出或重评" /></Field>
+              <Field label="前序上涨与充分换手证据"><Textarea value={f.stepsPrior ?? ""} onChange={(e) => onChange("stepsPrior", e.target.value)} placeholder="区别于下跌中继；记录来源与观察时点" /></Field>
+              <Field label="整理区间与突破量价条件"><Textarea value={f.stepsRange ?? ""} onChange={(e) => onChange("stepsRange", e.target.value)} placeholder="区间上下沿、低点抬升、量能与波动口径；潜伏与突破入场分开" /></Field>
+            </div>}
           </CardContent>
         </Card>;
       })}
@@ -145,11 +164,16 @@ export function StrategyWorkbench({ fields: f, onChange }: Props) {
             <Field label="单日停止交易（R）"><Input type="number" step="0.5" min="1" max="4" value={f.dailyStopR ?? "2"} onChange={(e) => onChange("dailyStopR", e.target.value)} /></Field>
             <Field label="连续失败降仓（笔）"><Input type="number" min="2" max="5" value={f.lossStreakLimit ?? "3"} onChange={(e) => onChange("lossStreakLimit", e.target.value)} /></Field>
             <Field label="今日已实现 R"><Input type="number" step="0.1" value={f.realizedR ?? "0"} onChange={(e) => onChange("realizedR", e.target.value)} /></Field>
+            <Field label="当前账户净值 ¥"><Input type="number" min="0" value={f.currentEquity ?? ""} onChange={(e) => onChange("currentEquity", e.target.value)} /></Field>
+            <Field label="同口径账户峰值 ¥"><Input type="number" min="0" value={f.peakEquity ?? ""} onChange={(e) => onChange("peakEquity", e.target.value)} /></Field>
+            <Field label="峰值回撤暂停阈值 %（自行设定）"><Input type="number" min="0" max="100" step="0.1" value={f.drawdownStopPct ?? ""} onChange={(e) => onChange("drawdownStopPct", e.target.value)} placeholder="先设置，再核对闸门" /></Field>
           </div>
-          <div className={`risk-banner ${number(f.realizedR) <= -dailyR ? "stopped" : ""}`}>
-            {number(f.realizedR) <= -dailyR ? <Ban /> : <ShieldCheck />}
-            <div><strong>{number(f.realizedR) <= -dailyR ? "已触发熔断：停止新增交易" : "风险预算正常"}</strong><p>1R = ¥{riskCny.toFixed(0)}；单日最大计划损失 = ¥{dailyLossLimit.toFixed(0)}。仓位必须由证伪距离反推。</p></div>
+          <div className={`risk-banner ${risk.issues.length ? "stopped" : ""}`}>
+            {risk.issues.length ? <Ban /> : <ShieldCheck />}
+            <div><strong>{risk.drawdownStopped || risk.dailyStopped ? "已触发暂停：停止新增交易" : risk.issues.length ? "账户风险尚待核对" : "风险预算正常"}</strong><p>{risk.issues.join("；") || "当前未触及已设置阈值"}。1R = ¥{riskCny.toFixed(0)}；单日计划损失上限 = ¥{dailyLossLimit.toFixed(0)}。{risk.drawdown === null ? "回撤未计算" : `距峰值回撤 ${risk.drawdown.toFixed(2)}%`}；{risk.remaining === null ? "回撤预算待设置" : `距暂停线约 ¥${risk.remaining.toFixed(0)}`}。</p></div>
           </div>
+          <p className="liquidity-note">回撤按同口径净值和峰值计算，出入金后须先调整基准。阈值是预案，不保证跳空或跌停时能按预算退出；页面闸门不连接券商。暂停后先复盘，不能通过下调峰值掩盖回撤。</p>
+          <Field label="暂停后的复盘与恢复条件"><Textarea value={f.riskResumePlan ?? ""} onChange={(e) => onChange("riskResumePlan", e.target.value)} placeholder="触发原因、模型失效还是执行问题；恢复需哪些盘面证据、试错规模与复查日期" /></Field>
           <Field label="隔夜 / 节假日 / T+1 最坏情景"><Textarea value={f.gapRisk ?? ""} onChange={(e) => onChange("gapRisk", e.target.value)} placeholder="若次日直接低开或监管突发，账户最多损失多少？" /></Field>
         </CardContent>
       </Card>
@@ -174,3 +198,4 @@ export function StrategyWorkbench({ fields: f, onChange }: Props) {
 
   </div>;
 }
+

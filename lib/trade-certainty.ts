@@ -7,6 +7,8 @@ export const certaintyFactors = [
 
 export const entryMechanisms = [
   { name: "极致恐慌低吸", buying: "恐慌释放后的边际改善", risk: "下跌根本没有结束", confirmation: "继续杀跌出现承接、其他老龙同步止跌，修复预期有事实支持" },
+  { name: "断板修复低吸", buying: "断板恐慌后的承接修复", risk: "弱反抽结束后再次下跌", confirmation: "修复的价格结构、主动买盘和同伴响应；不以是否涨停作为唯一兑现条件" },
+  { name: "小碎步潜伏", buying: "筹码稳定、波动收缩后的潜在扩张", risk: "下跌中继、假突破或长期不启动", confirmation: "前序换手、低点抬高、缩量整理与题材响应；预设等待期限和区间失守条件，规则待验证" },
   { name: "龙头分歧转一致", buying: "资金重新形成共识", risk: "看似修复，实际是出货反抽", confirmation: "龙头主动转强、同伴响应，竞争方向没有明显夺走接力资金" },
   { name: "断板反包", buying: "资金消化分歧后再次进攻", risk: "反包失败、高位再次杀跌", confirmation: "断板后有承接和有效换手，再次进攻有板块与资金反馈" },
   { name: "二波加速接力", buying: "主升重新确认", risk: "一致性过强，上方筹码兑现", confirmation: "二波前提得到验证；上方抛压、拥挤共识和承接能力一起核对" },
@@ -34,6 +36,13 @@ export function certaintyPlanIssues(fields: Record<string, string>): string[] {
       if (fields[`panic_${condition.id}_status`] !== "满足" || !fields[`panic_${condition.id}_evidence`]?.trim()) issues.push(`恐慌低吸待核对：${condition.name}`);
     }
     if (!fields.panicAverageBasis?.trim()) issues.push("记录均线复权方式、价格口径与行情来源");
+  }
+  if (fields.entryMechanism === "小碎步潜伏" || fields.ticketStrategy?.startsWith("CS-2 ")) {
+    const waitDays = Number(fields.stepsWaitDays);
+    if (!Number.isInteger(waitDays) || waitDays <= 0) issues.push("小碎步研究须设置有效的最长等待交易日数");
+    for (const [key, label] of [["stepsDeadline", "时间截止与到期动作"], ["stepsPrior", "前序上涨与换手证据"], ["stepsRange", "整理区间及突破量价条件"]]) {
+      if (!fields[key]?.trim()) issues.push(`小碎步研究待填写：${label}`);
+    }
   }
   return issues;
 }
@@ -63,3 +72,4 @@ export function readCertaintyCases(raw: string | undefined): CertaintyCase[] {
     return parsed.slice(0, 5).filter((item) => item && typeof item === "object").map((item) => Object.fromEntries(["stock", "mechanism", "before", "outcome", "execution", "lesson"].map((key) => [key, typeof item[key] === "string" ? item[key] : ""])) as CertaintyCase);
   } catch { return []; }
 }
+

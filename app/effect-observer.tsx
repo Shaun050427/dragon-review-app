@@ -13,7 +13,7 @@ export type BehaviorSample = {
   nextReturn: string;
 };
 
-export const BEHAVIORS = ["连板晋级", "打100%", "绕100%", "打200%", "绕200%", "出监管", "龙回头", "N/U右侧"];
+export const BEHAVIORS = ["连板晋级", "打100%", "绕100%", "打200%", "绕200%", "出监管", "龙回头", "恐慌均线低吸", "断板修复低吸", "小碎步潜伏", "N/U右侧"];
 const STAGES = ["待观察", "首次破局", "出现模仿", "广泛共识", "买点前置", "负反馈扩散"];
 
 export function parseSamples(raw: string | undefined): BehaviorSample[] {
@@ -65,6 +65,17 @@ export function EffectObserver({ fields: f, onChange, recent }: Props) {
   }, [recent]);
 
   return <div className="panel-grid effect-observer">
+    <Card className="span-12"><CardHeader><CardTitle>赚钱效应迁移 · 四要素之外的观察维度</CardTitle><p className="liquidity-note">最高标强势不等于中位接力好做；高位分歧不自动利好低吸。先比较同一观察时点的不同玩法，再写迁移假设。单只观察标只能提供线索。</p></CardHeader><CardContent className="form-grid two">
+      <Field label="观察时间 / 行情来源 / 盘中或收盘"><Input value={f.migrationSource || ""} onChange={(e) => onChange("migrationSource", e.target.value)} placeholder="盘中快照不能充当收盘统计" /></Field>
+      <Field label="迁移假设状态"><Select value={f.migrationState || "待观察"} onValueChange={(v) => onChange("migrationState", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["待观察", "出现线索", "跨样本支持", "证据冲突", "已证伪"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field>
+      <Field label="最高标 / 中位梯队 / 市场广度"><Textarea value={f.migrationStructure || ""} onChange={(e) => onChange("migrationStructure", e.target.value)} placeholder="分别记封板或换手承接、中位晋级 / 炸板、上涨家数与指数；每项带时间和来源" /></Field>
+      <Field label="接力与低吸的同口径对照"><Textarea value={f.migrationComparison || ""} onChange={(e) => onChange("migrationComparison", e.target.value)} placeholder="事前候选名单与数量、同一持有窗口、次日溢价、失败 / 回撤；不拿自己的盈利替代市场证据" /></Field>
+      <Field label="独立强势还是普涨跟随"><Textarea value={f.migrationRelative || ""} onChange={(e) => onChange("migrationRelative", e.target.value)} placeholder="高位分歧时低吸标的是否仍有承接？同伴与独立模仿是否响应？指数普涨是替代解释" /></Field>
+      <Field label="迁移的反证 / 暂缓条件"><Textarea value={f.migrationCounter || ""} onChange={(e) => onChange("migrationCounter", e.target.value)} placeholder="高低位同跌、低吸隔日无溢价、只有单个成功、样本不足；出现后如何撤销假设" /></Field>
+      <Field label="观察标 / 自身事件"><Input value={f.migrationAnchor || ""} onChange={(e) => onChange("migrationAnchor", e.target.value)} placeholder="例如高位辨识度股；记录自身消息，避免把个股兑现解释成全市场变化" /></Field>
+      <Field label="当前动作"><Select value={f.migrationAction || "空仓等待条件"} onValueChange={(v) => onChange("migrationAction", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["空仓等待条件", "优先管理已有持仓", "继续观察，不切换模式", "条件满足后按独立交易票评估"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field>
+      {[["migrationLocked", "保持封板", "筹码锁定；记录同伴扩散，中位接力仍须单独检查"], ["migrationReseal", "开板换手后回封", "检验实际承接、回封质量和其他高标响应"], ["migrationHighLow", "高位走弱、低位独立转强", "有独立样本、相对强度与隔日溢价才支持迁移"], ["migrationBothWeak", "高低位同步走弱", "低吸假设受损；先管理持仓、暂停新增，写重新评估条件"]].map(([key, label, placeholder]) => <Field label={`情景预案：${label}`} key={key}><Textarea value={f[key] || ""} onChange={(e) => onChange(key, e.target.value)} placeholder={placeholder} /></Field>)}
+    </CardContent></Card>
     <Card className="span-12"><CardHeader><CardTitle>赚钱效应迁移 · 今天市场奖励什么行为</CardTitle></CardHeader><CardContent className="form-grid two">
       <Field label="当前主导行为"><Select value={f.effectDominant || "待观察"} onValueChange={(v) => onChange("effectDominant", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="待观察">待观察</SelectItem>{BEHAVIORS.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field>
       <Field label="扩散阶段"><Select value={f.effectStage || "待观察"} onValueChange={(v) => onChange("effectStage", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{STAGES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field>
@@ -81,3 +92,4 @@ export function EffectObserver({ fields: f, onChange, recent }: Props) {
     <Card className="span-12"><CardHeader><CardTitle>最近五个已记录交易日 · 行为反馈</CardTitle><p className="text-sm text-muted-foreground">手工录入样本的描述性统计；样本数与已填结果数分列。红盘为严格大于 0%，极值是最差次日涨跌幅。</p></CardHeader><CardContent><div className="table-wrap"><table className="effect-table"><thead><tr><th>行为</th><th>样本</th><th>已填次日结果</th><th>次日中位数</th><th>红盘数</th><th>最差结果</th></tr></thead><tbody>{summary.map((row) => <tr key={row.behavior}><td>{row.behavior}</td><td>{row.total}</td><td>{row.count}</td><td>{row.median}{row.count ? "%" : ""}</td><td>{row.green}</td><td>{row.worst}{row.count ? "%" : ""}</td></tr>)}</tbody></table>{!summary.length && <p className="empty">先录入今天的代表样本；此处不会凭空生成胜率。</p>}</div><p className="text-sm text-muted-foreground">仅是你挑选的观察样本，不能代表全市场胜率。打/绕异动以对应市场、观察窗口和官方披露规则核对；不要用“差一分钱”替代偏离值计算。</p></CardContent></Card>
   </div>;
 }
+
