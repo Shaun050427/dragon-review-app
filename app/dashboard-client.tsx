@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { listRevisions, pullDocument, pushDocument, verifyRepository, type GitHubConfig, type GitHubRevision, type ReviewDocument } from "@/lib/github-store";
 import { YesterdayPremium } from "@/app/yesterday-premium";
+import { LowAbsorptionFunnel } from "@/app/low-absorption-funnel";
 import { LimitReview } from "@/app/limit-review";
 import { EffectObserver } from "@/app/effect-observer";
 import { StrategyWorkbench } from "@/app/strategy-workbench";
@@ -128,6 +129,7 @@ export function DashboardClient() {
   const [migrating, setMigrating] = useState(false);
   const [revisions, setRevisions] = useState<GitHubRevision[]>([]);
   const [revisionBusy, setRevisionBusy] = useState(false);
+  const [showLegacy, setShowLegacy] = useState(false);
   const dirtyRef = useRef(false);
   const dateRef = useRef(date);
   const revisionRef = useRef(revision);
@@ -389,9 +391,10 @@ export function DashboardClient() {
         </div>
         <p className="guardrail-bottom">执行顺序：先看赚钱效应与负反馈 → 再看身份和资金链 → 最后才看价格、异动余量与形态。</p>
       </section>
-      {accountIssues.length > 0 && <div className="notice-row"><div><strong>账户风险闸门：暂不新增交易</strong><p>{accountIssues.join("；")}。在“策略与风控”中核对风险预算及恢复条件。</p></div></div>}
-      <Tabs defaultValue="effect" className="main-tabs"><TabsList className="tab-list"><TabsTrigger value="effect">赚钱效应</TabsTrigger><TabsTrigger value="system">策略与风控</TabsTrigger><TabsTrigger value="plan">今晚计划</TabsTrigger><TabsTrigger value="opening">盘中执行</TabsTrigger><TabsTrigger value="review">盘后复盘</TabsTrigger><TabsTrigger value="limit">涨停复盘图</TabsTrigger><TabsTrigger value="history">历史统计</TabsTrigger></TabsList>
+      {accountIssues.length > 0 && <div className="notice-row"><div><strong>账户风险闸门：暂不新增交易</strong><p>{accountIssues.join("；")}。请在“低吸雷达”核查后，于“今晚计划/盘中执行”落实风控。</p></div></div>}
+      <Tabs defaultValue="funnel" className="main-tabs"><TabsList className="tab-list"><TabsTrigger value="effect">赚钱效应</TabsTrigger><TabsTrigger value="funnel">低吸雷达</TabsTrigger><TabsTrigger value="plan">今晚计划</TabsTrigger><TabsTrigger value="opening">盘中执行</TabsTrigger>{showLegacy && <><TabsTrigger value="system">旧·策略风控</TabsTrigger><TabsTrigger value="review">旧·盘后复盘</TabsTrigger><TabsTrigger value="limit">旧·涨停图</TabsTrigger><TabsTrigger value="history">旧·历史统计</TabsTrigger></>}</TabsList>
         <TabsContent value="effect"><EffectObserver fields={f} onChange={updateField} recent={recentEffectDays} /></TabsContent>
+        <TabsContent value="funnel"><LowAbsorptionFunnel date={date} fields={f} onChange={updateField} summary={{ days: records.length, winRate: String(stats.winRate), pnl: stats.totalPnl }} onExport={exportCloud} onToggleLegacy={() => setShowLegacy((v) => !v)} legacyVisible={showLegacy} /></TabsContent>
         <TabsContent value="system"><StrategyWorkbench fields={f} onChange={updateField} /></TabsContent>
         <TabsContent value="limit" className="panel-grid"><LimitReview date={date} /><Card className="span-6"><CardHeader><CardTitle>我的题材与竞争关系</CardTitle></CardHeader><CardContent><Textarea value={f.reviewThemes ?? ""} onChange={(e) => updateField("reviewThemes", e.target.value)} placeholder="主线、支线、板块竞争与证据；只存入私人复盘" /></CardContent></Card><Card className="span-6"><CardHeader><CardTitle>我的核心角色判断</CardTitle></CardHeader><CardContent><Textarea value={f.reviewRoles ?? ""} onChange={(e) => updateField("reviewRoles", e.target.value)} placeholder="龙头、中军、补涨、20cm 核心及证伪条件；由我确认" /></CardContent></Card></TabsContent>
         <TabsContent value="plan" className="panel-grid">
