@@ -29,6 +29,13 @@ jobs:
       - run: python -m playwright install --with-deps chromium
       - run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk
       - run: python scripts/build_limit_review.py
+      - name: Build end-of-day low absorption radar
+        continue-on-error: true
+        run: |
+          git fetch origin market-data
+          git worktree add --detach /tmp/dragon-market-data origin/market-data
+          day="$(TZ=Asia/Shanghai date +%F)"
+          timeout 6m python scripts/build_low_absorption.py --archive-dir /tmp/dragon-market-data --today "/tmp/limit-review/$day.json" --out /tmp/low-absorption
       - name: Capture full infographic
         run: |
           python - <<'PY'
@@ -58,6 +65,14 @@ jobs:
           cp "/tmp/limit-review/$day.json" "/tmp/limit-review/$day.html" "/tmp/limit-review/$day.png" "daily/$year/$month/"
           cp "/tmp/limit-review/$day.json" latest-limit-review.json
           git add "daily/$year/$month" latest-limit-review.json
+          if [ -f "/tmp/low-absorption/radar/$year/$month/$day.json" ] && [ -f /tmp/low-absorption/trading-calendar.json ]; then
+            mkdir -p "radar/$year/$month"
+            cp "/tmp/low-absorption/radar/$year/$month/$day.json" "radar/$year/$month/"
+            cp /tmp/low-absorption/trading-calendar.json trading-calendar.json
+            git add "radar/$year/$month" trading-calendar.json
+          else
+            echo '::warning::Daily radar unavailable; original archive preserved, no fabricated calendar or prices.'
+          fi
           if ! git diff --cached --quiet; then
             git commit -m "market: archive limit-up review $day"
             git push origin HEAD:market-data
