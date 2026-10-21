@@ -44,3 +44,7 @@ next-env.d.ts
 /.codex/
 /outputs/
 /work/
+
+# Local verification outputs
+*.tsbuildinfo
+__pycache__/

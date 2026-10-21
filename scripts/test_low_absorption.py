@@ -54,7 +54,7 @@ class RadarTest(unittest.TestCase):
         sessions = [r["date"] for r in self.bars]
         old, recent = sessions[-17], sessions[-4]
         stock = {"code": "000001", "name": "fixture", "boards": 4}
-        self.assertEqual(candidates({old: {"stocks": [stock]}}, sessions), [])
+        self.assertEqual(len(candidates({old: {"stocks": [stock]}}, sessions)), 1)  # Expired failures remain in research universe.
         self.assertEqual(len(candidates({recent: {"stocks": [stock]}}, sessions)), 1)
 
     def test_today_archive_and_corruption(self):

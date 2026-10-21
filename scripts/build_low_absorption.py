@@ -2,9 +2,12 @@
 import argparse
 import json
 import math
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from low_absorption_research import archive_identity, research_facts
 
 
 def finite(value, positive=False):
@@ -88,12 +91,14 @@ def load_archives(root, sessions, today):
 
 
 def candidates(days, sessions):
-    result = {}
-    for day in sorted(days):
-        for s in days[day]["stocks"]:
-            previous = result.get(s["code"], {})
-            result[s["code"]] = {"code": s["code"], "name": s["name"], "lastBoard": day, "maxBoards": max(s["boards"], previous.get("maxBoards", 0))}
-    return [s for s in result.values() if s["maxBoards"] >= 3 and len([d for d in sessions if d > s["lastBoard"]]) <= 15]
+    # Keep expired/failed names for research; memory affects priority, not survival.
+    codes = {s["code"]: s["name"] for d in days.values() for s in d["stocks"]}
+    result = []
+    for code, name in codes.items():
+        identity = archive_identity(code, days, sessions, sessions[-1])
+        if identity["maxBoards"] >= 3 or identity["limitCount10"] >= 6:
+            result.append({"code": code, "name": name, **identity})
+    return result
 
 
 def main():
@@ -121,14 +126,18 @@ def main():
         date.fromisoformat(day)
     calendar = {"schemaVersion": 1, "source": "上证指数已完成日K日期 / AKShare index_zh_a_hist / 东方财富", "coveredFrom": sessions[0], "coveredThrough": through, "sessions": sessions}
     scan = sessions[-45:]
-    archives = load_archives(args.archive_dir, scan, today)
+    archives = load_archives(args.archive_dir, sessions[-65:], today)  # 45-day identity warmup + 20-day study.
     missing = [d for d in scan if d not in archives]
     pool = candidates(archives, scan)
     downs = {day: {s["code"] for s in data.get("down", [])} for day, data in archives.items()}
-    stocks = []
-    for candidate in pool:
+    # Bound the expanded retained universe so failures do not consume the entire
+    # six-minute workflow and discard all completed stock snapshots.
+    deadline = time.monotonic() + 260
+    def collect(candidate):
         code = candidate["code"]
         try:
+            if time.monotonic() >= deadline:
+                raise TimeoutError("本批采集预算用尽；候选保留，下次补齐")
             frame = ak.stock_zh_a_hist(symbol=code, period="daily", start_date=start, end_date=compact, adjust="qfq", timeout=15)
             bars = normalize_bars(frame, through)
             # An internal omission must not shift MAs or count a false 'first' touch.
@@ -136,15 +145,25 @@ def main():
             if expected != {r["date"] for r in bars}:
                 raise ValueError("日线存在缺口/停牌；均线与首次触线待人工核对")
             facts = metrics(code, bars, candidate["lastBoard"], through, downs)
-            stocks.append({**candidate, **facts})
+            return {**candidate, **facts, "research": research_facts(code, bars, archives, sessions, through)}
         except Exception as exc:
-            stocks.append({**candidate, "error": str(exc)[:250]})
             print(f"{code} 日线缺失：{type(exc).__name__}")
+            return {**candidate, "error": str(exc)[:250]}
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        stocks = list(executor.map(collect, pool))
     snapshot = {"schemaVersion": 1, "tradeDate": through, "observedAt": now.isoformat(timespec="seconds"), "source": "东方财富日线 / AKShare stock_zh_a_hist；涨跌停池为现有归档", "adjustment": "前复权qfq；采集时口径；成交量单位手；仅收盘事实", "calendar": calendar, "missingArchives": missing, "stocks": stocks}
     output = args.out / "radar" / through[:4] / through[5:7]
     output.mkdir(parents=True, exist_ok=True)
     (output / f"{through}.json").write_text(json.dumps(snapshot, ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8")
     (args.out / "trading-calendar.json").write_text(json.dumps(calendar, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    from backtest_low_absorption import study
+    try:
+        report = study(snapshot, archives)
+        research_output = args.out / "research" / through[:4] / through[5:7]
+        research_output.mkdir(parents=True, exist_ok=True)
+        (research_output / f"{through}.json").write_text(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+    except Exception as exc:
+        print(f"研究报告未生成（不影响日线快照）：{type(exc).__name__}: {str(exc)[:200]}")
     print(f"低吸日线快照：{len(stocks)}候选 / {sum('error' in s for s in stocks)}缺失 / {len(missing)}日涨停归档缺失")
 
 

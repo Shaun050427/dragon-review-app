@@ -70,6 +70,11 @@ jobs:
             cp "/tmp/low-absorption/radar/$year/$month/$day.json" "radar/$year/$month/"
             cp /tmp/low-absorption/trading-calendar.json trading-calendar.json
             git add "radar/$year/$month" trading-calendar.json
+            if [ -f "/tmp/low-absorption/research/$year/$month/$day.json" ]; then
+              mkdir -p "research/$year/$month"
+              cp "/tmp/low-absorption/research/$year/$month/$day.json" "research/$year/$month/"
+              git add "research/$year/$month/$day.json"
+            fi
           else
             echo '::warning::Daily radar unavailable; original archive preserved, no fabricated calendar or prices.'
           fi

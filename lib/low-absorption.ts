@@ -2,10 +2,10 @@ export type Fields = Record<string, string>;
 export type FunnelStock = { code: string; name: string; industry: string; boards: number };
 export type FunnelDay = { date: string; stocks: FunnelStock[] };
 export type TradingCalendar = { schemaVersion: 1; source: string; coveredFrom: string; coveredThrough: string; sessions: string[] };
-export type FunnelCandidate = { code: string; name: string; industry: string; maxBoards: number; lastBoard: string; age: number | null; missingAfter: number };
+export type FunnelCandidate = { code: string; name: string; industry: string; maxBoards: number; lastBoard: string; age: number | null; missingAfter: number; limitCount10: number; leaderClass: LeaderClass };
 export type DailyMetric = {
   code: string; dataDate?: string; error?: string; close?: number; drawdownPct?: number; fallingDays?: number;
-  volumeRatio?: number | null; turnoverRate?: number | null;
+  volumeRatio?: number | null; turnoverRate?: number | null; research?: ResearchFacts;
   averages?: { period: number; value: number | null; distancePct: number | null; firstTouchDate: string | null }[];
   recent?: { date: string; close: number; volume: number; turnoverRate: number | null; limitDown: boolean; volumeRatio: number | null }[];
 };
@@ -42,12 +42,17 @@ export function discoverCandidates(days: FunnelDay[], date: string, calendar: Tr
   const present = new Set(days.map((d) => d.date));
   for (const day of [...days].filter((d) => d.date <= date).sort((a, b) => a.date.localeCompare(b.date))) for (const s of day.stocks) {
     const previous = history.get(s.code);
-    history.set(s.code, { code: s.code, name: s.name, industry: s.industry || "", maxBoards: Math.max(previous?.maxBoards ?? 0, s.boards), lastBoard: day.date, age: tradingAge(day.date, date, calendar), missingAfter: 0 });
+    history.set(s.code, { code: s.code, name: s.name, industry: s.industry || "", maxBoards: Math.max(previous?.maxBoards ?? 0, s.boards), lastBoard: day.date, age: tradingAge(day.date, date, calendar), missingAfter: 0, limitCount10: 0, leaderClass: "unclassified" });
   }
-  return [...history.values()].filter((s) => s.maxBoards >= 3 && (s.age === null || s.age <= 15)).map((s) => ({ ...s, missingAfter: calendar ? calendar.sessions.filter((d) => d > s.lastBoard && d <= date && !present.has(d)).length : 0 })).sort((a, b) => (a.age ?? 99) - (b.age ?? 99) || b.maxBoards - a.maxBoards || a.code.localeCompare(b.code));
+  const sessions = calendar?.sessions.filter((d) => d <= date).slice(-45) ?? [];
+  return [...history.values()].map((s) => {
+    const events = days.filter((d) => d.date <= date && d.stocks.some((v) => v.code === s.code)).map((d) => d.date);
+    const limitCount10 = sessions.length ? Math.max(0, ...sessions.map((_, i) => events.filter((d) => sessions.slice(Math.max(0, i - 9), i + 1).includes(d)).length)) : 0;
+    return { ...s, limitCount10, leaderClass: nominateLeader(s.maxBoards, limitCount10), missingAfter: calendar ? calendar.sessions.filter((d) => d > s.lastBoard && d <= date && !present.has(d)).length : 0 };
+  }).filter((s) => s.maxBoards >= 3 || s.limitCount10 >= 6).sort((a, b) => (a.age ?? 99) - (b.age ?? 99) || b.maxBoards - a.maxBoards || a.code.localeCompare(b.code));
 }
 export function memoryWindow(age: number | null): string {
-  return age === null ? "待核交易日" : age === 0 ? "预备池：当日涨停" : age <= 5 ? "一级：1—5日" : age <= 10 ? "二级：6—10日" : age <= 15 ? "衰减：11—15日" : "退出旧周期";
+  return age === null ? "待核交易日" : age === 0 ? "预备池：当日涨停" : age <= 5 ? "一级：1—5日" : age <= 10 ? "二级：6—10日" : age <= 15 ? "衰减：11—15日" : age <= 20 ? "扩展：16—20日（C2待核）" : "降级保留";
 }
 export function numeric(v: string | undefined): number | null {
   if (!v?.trim()) return null;
@@ -60,7 +65,9 @@ export function entrySignal(f: Fields): { triggered: boolean; message: string } 
   if (l === null || h === null || close === null || ratio === null || l <= 0 || h <= l || close <= 0 || ratio < 0) return no("待填写有效L、H、已完成分钟收盘与量比。");
   if (close <= l || f.retest === "failed") return no("低点/回踩失守，本次结构失效；需重新识别L、H。");
   if (f.stopped !== "yes" || f.firstTouch !== "yes") return no("先核实连续3根1分钟未破L（或一根5分钟止跌）及首次触线。");
-  if (f.model === undefined || !["A1", "A2", "B"].includes(f.model) || !f.identity?.trim() || f.peers !== "yes") return no("补齐模型、核心地位证据与同伴/行业反馈。");
+  if (!["S1", "S2", "trend"].includes(strategyOf(f)) || !f.identity?.trim() || f.peers !== "yes") return no("补齐模型、核心地位证据与同伴/行业反馈。");
+  if (f.strategy && researchQualification(f) !== "身份人工核验已记录") return no(researchQualification(f));
+  if (f.strategy && (f.strategy === "S1" && !["5", "10"].includes(f.averagePeriod) || f.strategy === "S2" && !["20", "30"].includes(f.averagePeriod))) return no("请核对模式与均线：S1研究MA5/10，S2研究MA20/30。");
   if (close <= h || ratio < 1.5) return no("待一分钟收盘突破H且本分钟量/此前5根均量≥1.5。");
   if (f.buyMethod === "A") {
     if (f.nextHeld !== "yes") return no("A：突破后仍需核对下一分钟维持H上方；无需强求二次测试L。");
@@ -100,9 +107,40 @@ export function readRadar(v: unknown, date: string): RadarSnapshot | null {
   for (const s of v.stocks) {
     if (!record(s) || typeof s.code !== "string" || !/^\d{6}$/.test(s.code)) return null;
     if (typeof s.error === "string") continue;
+    if (s.research !== undefined && !readResearchFacts(s.research, date)) return null;
     if (s.dataDate !== date || typeof s.close !== "number" || !Number.isFinite(s.close) || s.close <= 0 || !numberOrNull(s.drawdownPct) || !numberOrNull(s.volumeRatio) || !Array.isArray(s.averages) || !Array.isArray(s.recent)) return null;
     if (!s.averages.every((a) => record(a) && [5, 10, 20, 30].includes(Number(a.period)) && numberOrNull(a.value) && numberOrNull(a.distancePct) && (a.firstTouchDate === null || validDate(a.firstTouchDate) && a.firstTouchDate <= date))) return null;
     if (!s.recent.every((r) => record(r) && validDate(r.date) && r.date <= date && numberOrNull(r.close) && numberOrNull(r.volume) && numberOrNull(r.turnoverRate) && numberOrNull(r.volumeRatio) && typeof r.limitDown === "boolean")) return null;
   }
   return v as RadarSnapshot;
+}
+
+export type LeaderClass = "C1" | "C2" | "C3" | "unclassified";
+export type ResearchFacts = {
+  ruleVersion: string; leaderClass: LeaderClass; identityStatus: string; limitCount10: number;
+  lastBoard: string | null; lastActive: string | null; boardAge: number | null; activeAge: number | null;
+  priority: string; missingIdentitySessions: string[];
+  touches: { period: number; touchCount: number; firstTouchDate: string | null; touching: boolean; stage: string }[];
+};
+export const leaderLabels: Record<LeaderClass, string> = { C1: "C1 普通连板龙候选", C2: "C2 长生命周期核心候选", C3: "C3 非连板趋势核心", unclassified: "身份待核" };
+export function nominateLeader(maxBoards: number, limitCount10: number): LeaderClass {
+  return maxBoards >= 5 || limitCount10 >= 6 ? "C2" : maxBoards >= 3 ? "C1" : "unclassified";
+}
+export function strategyOf(f: Fields): string {
+  return f.strategy || (f.model === "A1" ? "S1" : f.model === "A2" ? "S2" : f.model === "B" ? "trend" : "");
+}
+export function researchQualification(f: Fields, facts?: ResearchFacts) {
+  const kind = f.leaderClass || facts?.leaderClass || "unclassified";
+  if (!f.identity?.trim() || f.identityConfirmed !== "yes") return "待核核心地位，连板门槛仅作提名";
+  if (kind === "C2" && (!f.lifecycleEvidence?.trim() || f.lifecycleConfirmed !== "yes")) return "C2待核多轮进攻、换手与持续共识";
+  if (kind === "C3" && strategyOf(f) !== "trend") return "C3单独研究，不能沿用连板龙S1/S2";
+  if (kind === "unclassified" || !["C1", "C2", "C3"].includes(kind)) return "请选择龙头身份";
+  return "身份人工核验已记录";
+}
+
+export function readResearchFacts(v: unknown, date: string): v is ResearchFacts {
+  if (!record(v) || v.ruleVersion !== "2.0" || !["C1", "C2", "C3", "unclassified"].includes(String(v.leaderClass)) || typeof v.identityStatus !== "string" || typeof v.priority !== "string" || !Number.isInteger(v.limitCount10) || Number(v.limitCount10) < 0 || !Array.isArray(v.missingIdentitySessions) || !v.missingIdentitySessions.every((d) => validDate(d) && d <= date) || !Array.isArray(v.touches)) return false;
+  for (const k of ["lastBoard", "lastActive"]) if (v[k] !== null && !(validDate(v[k]) && String(v[k]) <= date)) return false;
+  for (const k of ["boardAge", "activeAge"]) if (v[k] !== null && !(Number.isInteger(v[k]) && Number(v[k]) >= 0)) return false;
+  return v.touches.length === 4 && new Set(v.touches.map((t) => record(t) ? t.period : null)).size === 4 && v.touches.every((t) => record(t) && [5, 10, 20, 30].includes(Number(t.period)) && Number.isInteger(t.touchCount) && Number(t.touchCount) >= 0 && typeof t.touching === "boolean" && typeof t.stage === "string" && (t.firstTouchDate === null || validDate(t.firstTouchDate) && t.firstTouchDate <= date));
 }

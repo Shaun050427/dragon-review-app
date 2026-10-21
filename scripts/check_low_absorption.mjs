@@ -24,7 +24,7 @@ assert.equal(discoverCandidates(days, "2026-10-20", null)[0].age, null);
 assert.equal(discoverCandidates([...days, archive("2026-10-21", [stock])], "2026-10-20", calendar)[0].lastBoard, "2026-10-15");
 assert.equal(discoverCandidates([archive("2026-10-15", [stock])], "2026-10-15", calendar)[0].age, 0);
 assert.equal(memoryWindow(0), "预备池：当日涨停");
-assert.equal(memoryWindow(16), "退出旧周期");
+assert.equal(memoryWindow(16), "扩展：16—20日（C2待核）");
 assert.equal(scanDates("2026-02-30", null).length, 0);
 assert.equal(scanDates("2026-10-20", calendar)[0], "2026-10-20");
 for (const invalid of ["", " ", "NaN", "Infinity"]) assert.equal(numeric(invalid), null);

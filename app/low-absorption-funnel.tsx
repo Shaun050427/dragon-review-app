@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { discoverCandidates, entrySignal, memoryWindow, readArchive, readCalendar, readRadar, readWatchlist, riskPlan, scanDates, stockFields, validDate } from "@/lib/low-absorption";
+import { LowAbsorptionResearch } from "@/app/low-absorption-research";
+import { leaderLabels, researchQualification, strategyOf, discoverCandidates, entrySignal, memoryWindow, readArchive, readCalendar, readRadar, readWatchlist, riskPlan, scanDates, stockFields, validDate } from "@/lib/low-absorption";
 import type { Fields, FunnelDay, RadarSnapshot, TradingCalendar } from "@/lib/low-absorption";
 
 type Summary = { days: number; winRate: string; pnl: number };
@@ -28,6 +29,7 @@ export function LowAbsorptionFunnel({ date, fields, onChange, summary, onExport,
   const [loading, setLoading] = useState(false);
   const [revision, setRevision] = useState(0);
   const [filter, setFilter] = useState("all");
+  const [leaderFilter, setLeaderFilter] = useState("all");
   const [manualCode, setManualCode] = useState("");
   const [manualName, setManualName] = useState("");
   const [manualError, setManualError] = useState("");
@@ -72,12 +74,14 @@ export function LowAbsorptionFunnel({ date, fields, onChange, summary, onExport,
   const watched = watchlist.find((s) => s.code === code);
   const selected = candidates.find((s) => s.code === code);
   const stock = watched || selected;
-  const f = stockFields(fields, code);
+  const stored = stockFields(fields, code);
   const set = useCallback((key: string, v: string) => onChange(`funnel_${code}_${key}`, v), [code, onChange]);
   const radar = current ? result.radar : null;
   const metric = radar?.stocks.find((s) => s.code === code);
+  const facts = metric?.research;
+  const f: Fields = { ...stored, strategy: strategyOf(stored), leaderClass: stored.leaderClass || facts?.leaderClass || selected?.leaderClass || "unclassified" };
   const missing = current && result.calendar && date <= result.calendar.coveredThrough ? result.expected.filter((d) => !days.some((x) => x.date === d)) : [];
-  const shown = candidates.filter((c) => filter === "all" || (filter === "unknown" ? c.age === null : filter === "0" ? c.age === 0 : c.age !== null && c.age >= Number(filter) && c.age <= Number(filter) + 4));
+  const shown = candidates.filter((c) => (leaderFilter === "all" || c.leaderClass === leaderFilter) && (filter === "all" || (filter === "unknown" ? c.age === null : filter === "expired" ? c.age !== null && c.age > 20 : filter === "0" ? c.age === 0 : c.age !== null && c.age >= Number(filter) && c.age <= Number(filter) + 4)));
   function observe(s: { code: string; name: string }) {
     if (!watchlist.some((v) => v.code === s.code)) onChange("funnelWatchlist", JSON.stringify([...watchlist, s]));
     onChange("funnelSelectedCode", s.code);
@@ -89,16 +93,17 @@ export function LowAbsorptionFunnel({ date, fields, onChange, summary, onExport,
   const signal = entrySignal(f);
   const risk = riskPlan({ ...f, equity: f.equity ?? fields.currentEquity ?? "", riskPct: f.riskPct ?? fields.riskPerTradePct ?? "" });
   return <div className="low-absorption-funnel span-12 space-y-4">
-    <Card><CardHeader className="history-head"><div><CardTitle>低吸雷达 · 发现 → 过滤 → 承接 → 退出</CardTitle><p>每天审查少量候选；允许没有交易。所有阈值为V1.2研究参数。</p></div><Button variant="outline" onClick={() => setRevision((v) => v + 1)} disabled={loading}><RefreshCw className={loading ? "animate-spin" : ""}/>重新扫描</Button></CardHeader>
+    <Card><CardHeader className="history-head"><div><CardTitle>低吸雷达 · 发现 → 过滤 → 承接 → 退出</CardTitle><p>每天审查少量候选；允许没有交易。身份 × 双时钟 × S1/S2 × 均线，均为V2待验证规则。</p></div><Button variant="outline" onClick={() => setRevision((v) => v + 1)} disabled={loading}><RefreshCw className={loading ? "animate-spin" : ""}/>重新扫描</Button></CardHeader>
       <CardContent className="space-y-4">
         <div className="premium-metrics"><div>涨停归档 <b>{days.length}/{current ? result.expected.length : "—"}</b></div><div>自动提名 <b>{candidates.length}</b></div><div>1—5日候选 <b>{candidates.filter((c) => c.age !== null && c.age >= 1 && c.age <= 5).length}</b></div><div>已纳入观察 <b>{watchlist.length}</b></div></div>
         {loading && <p role="status">正在扫描 {date} 的候选及收盘快照…</p>}
         {current && result.error && <p className="dirty" role="status">{result.error}</p>}
-        <p className="premium-source">历史≥3板仅作提名，不等于龙头认证。资金记忆：1—5日优先、6—10日常规、11—15日衰减，超过15日退出旧周期；趋势核心单独研究。放量跌停不剔除，也不自动认定为洗盘或承接。</p>
+        <p className="premium-source">C1：3—4板候选，末次涨停后1—10日优先研究MA10。C2：≥5板或扫描期任意10交易日≥6次涨停仅作提名，须核验持续共识；双时钟扩展观察至20日，分别研究MA10/20/30。C3趋势核心单独研究。过期与失败候选降级保留；放量跌停不自动认定为承接。</p>
         <p className="premium-source">{current && result.calendar && date <= result.calendar.coveredThrough ? `交易日来自：${result.calendar.source}；覆盖至${result.calendar.coveredThrough}。` : "交易日历缺失或未覆盖所选日期：候选仍展示，资金记忆标为待核，不用归档天数冒充交易日。"}{missing.length ? ` 缺少${missing.length}个应有归档，最后涨停日可能偏早、连板高度可能漏记。` : ""}</p>
         {missing.length > 0 && <details><summary>查看缺失归档日期</summary><p className="premium-source">{missing.join("、")}</p></details>}
-        <label className="field"><span>观察窗口</span><select aria-label="观察窗口" value={filter} onChange={(e) => setFilter(e.target.value)}>{[["all", "全部"], ["0", "预备池：当日涨停"], ["1", "1—5日"], ["6", "6—10日"], ["11", "11—15日"], ["unknown", "天数待核"]].map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></label>
-        <div className="table-wrap premium-table"><table><thead><tr><th>股票</th><th>扫描期最高连板</th><th>距归档末次涨停</th><th>最后归档涨停</th><th>数据完整性</th><th>观察</th></tr></thead><tbody>{shown.map((s) => <tr key={s.code}><td>{s.name} <small>{s.code}</small></td><td>{s.maxBoards}板</td><td>{memoryWindow(s.age)}{s.age !== null ? `（${s.age}日）` : ""}</td><td>{s.lastBoard}</td><td>{s.age === null ? "日历待核" : s.missingAfter ? `此后缺${s.missingAfter}日，末次涨停待核` : "末次涨停后归档齐全"}</td><td><Button size="sm" variant={code === s.code ? "default" : "outline"} onClick={() => observe(s)}>纳入观察</Button></td></tr>)}</tbody></table>{!loading && !shown.length && <p className="premium-source">本窗口暂无候选；归档不足时不能据此判断市场没有机会。</p>}</div>
+        <label className="field"><span>观察窗口</span><select aria-label="观察窗口" value={filter} onChange={(e) => setFilter(e.target.value)}>{[["all", "全部"], ["0", "预备池：当日涨停"], ["1", "1—5日"], ["6", "6—10日"], ["11", "11—15日"], ["16", "16—20日"], ["expired", "超过20日·降级保留"], ["unknown", "天数待核"]].map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></label>
+        <label className="field"><span>龙头分层</span><select aria-label="龙头分层" value={leaderFilter} onChange={(e) => setLeaderFilter(e.target.value)}><option value="all">全部候选</option><option value="C1">C1 普通连板龙候选</option><option value="C2">C2 长生命周期核心候选</option></select></label>
+        <div className="table-wrap premium-table"><table><thead><tr><th>股票</th><th>身份提名 / 连板</th><th>涨停 / 活跃双时钟</th><th>最后归档涨停</th><th>数据完整性</th><th>观察</th></tr></thead><tbody>{shown.map((s) => <tr key={s.code}><td>{s.name} <small>{s.code}</small></td><td>{leaderLabels[s.leaderClass]}<small>最高{s.maxBoards}板 / 10日累计峰值{s.limitCount10}次</small></td><td>{memoryWindow(s.age)}{s.age !== null ? `（${s.age}日）` : ""}<small>活跃：{radar?.stocks.find((m) => m.code === s.code)?.research?.activeAge ?? "待核"}日</small><small>{radar?.stocks.find((m) => m.code === s.code)?.research?.priority || "待收盘快照核查"}</small></td><td>{s.lastBoard}</td><td>{s.age === null ? "日历待核" : s.missingAfter ? `此后缺${s.missingAfter}日，末次涨停待核` : "末次涨停后归档齐全"}</td><td><Button size="sm" variant={code === s.code ? "default" : "outline"} onClick={() => observe(s)}>纳入观察</Button></td></tr>)}</tbody></table>{!loading && !shown.length && <p className="premium-source">本窗口暂无候选；归档不足时不能据此判断市场没有机会。</p>}</div>
         <details><summary>补充趋势核心或归档遗漏的候选</summary><div className="form-grid two"><label className="field"><span>六位股票代码</span><Input aria-label="六位股票代码" value={manualCode} onChange={(e) => setManualCode(e.target.value.trim())}/></label><label className="field"><span>股票名称</span><Input aria-label="股票名称" value={manualName} onChange={(e) => setManualName(e.target.value)}/></label></div><Button variant="outline" onClick={() => { if (!/^\d{6}$/.test(manualCode) || !manualName.trim()) { setManualError("请填六位代码和名称。"); return; } observe({ code: manualCode, name: manualName.trim() }); setManualError(""); }}>加入今日观察</Button>{manualError && <p role="alert">{manualError}</p>}</details>
         <div className="flex flex-wrap gap-2">{watchlist.map((s) => <Button key={s.code} variant={code === s.code ? "default" : "outline"} onClick={() => onChange("funnelSelectedCode", s.code)}>{s.name} {s.code}</Button>)}</div>
       </CardContent></Card>
@@ -110,8 +115,12 @@ export function LowAbsorptionFunnel({ date, fields, onChange, summary, onExport,
           <div className="table-wrap"><table><thead><tr><th>收盘均线</th><th>价格</th><th>收盘距离</th><th>本轮首次进入±1%观察带</th></tr></thead><tbody>{metric.averages?.map((a) => <tr key={a.period}><td>MA{a.period}</td><td>{value(a.value)}</td><td>{value(a.distancePct, "%")}</td><td>{a.firstTouchDate || "未触及/样本不足"}</td></tr>)}</tbody></table></div>
           <details><summary>近三日量价与跌停事实</summary><div className="table-wrap"><table><thead><tr><th>日期</th><th>收盘</th><th>成交量（手）</th><th>换手率</th><th>量/此前5日均量</th><th>当日跌停池</th></tr></thead><tbody>{metric.recent?.map((r) => <tr key={r.date}><td>{r.date}</td><td>{value(r.close)}</td><td>{value(r.volume)}</td><td>{value(r.turnoverRate, "%")}</td><td>{value(r.volumeRatio, "倍")}</td><td>{r.limitDown ? "在池内" : "未见（归档缺失需核对）"}</td></tr>)}</tbody></table></div><p className="premium-source">放量只说明成交交换；后续价格收复与同伴反馈才用于检验买方是否占优。</p></details>
         </> : <p className="premium-source">{metric?.error ? `日线采集未完成：${metric.error}` : "此股票/日期暂无日线快照。均线、回撤与首次触线需在终端核对；不使用旧日数据替代。"}</p>}
-        <div className="form-grid two">{choice("model", "所属模型", [["A1", "A1 高标首次强分歧 · MA5/10"], ["A2", "A2 老龙深调 · MA20/30"], ["B", "B 趋势核心 · MA10/20/30"]])}{choice("firstTouch", "本轮首次接近所选均线？", yesNo)}{input("averageBasis", "所选均线、复权口径、来源与观察时间", "text", "如：动态MA10；前复权；券商终端；09:40")}{input("identity", "核心地位证据（不是仅填连板数）", "text", "同期最高标/行业主动性/成交辨识度")}{choice("peers", "同周期/行业反馈支持？", yesNo)}{input("peerEvidence", "同伴反馈与新催化证据", "text")}</div>
-        <details><summary>重复修复、筹码与失败样本</summary><div className="form-grid two">{input("repairCount", "本轮第几次修复尝试")}{text("supply", "上方套牢筹码与前次修复失败", "记录反复跌破的反例；超过15日需要新催化与新周期证据。")}{text("rejection", "淘汰原因/不交易理由", "即使不买也留下记录，避免只收集成功反包。")}</div></details>
+        {facts && <div className="premium-source"><p>涨停时钟：{facts.lastBoard || "待核"} / {facts.boardAge ?? "待核"}交易日；活跃时钟：{facts.lastActive || "未发现有效进攻"} / {facts.activeAge ?? "待核"}交易日。{facts.priority}。</p><p>有效进攻初版：突破此前20日高点、收盘上涨且成交量≥此前5日均量1.5倍。未出现则不重置活跃时钟。</p><div className="table-wrap"><table><thead><tr><th>均线</th><th>触线轮次</th><th>今日观察带</th><th>候选模式</th></tr></thead><tbody>{facts.touches.map((t) => <tr key={t.period}><td>MA{t.period}</td><td>{t.touchCount === 0 ? "尚未触及" : t.touchCount === 1 ? "首次" : `第${t.touchCount}次·重复`}</td><td>{t.touching ? "在±1%带内" : "不在带内"}</td><td>{t.stage}</td></tr>)}</tbody></table></div></div>}
+        <div className="form-grid two">{choice("leaderClass", "龙头身份（独立于买入模式）", [["C1", "C1 普通连板龙"], ["C2", "C2 长生命周期核心"], ["C3", "C3 非连板趋势核心"]])}{choice("strategy", "入场模式", [["S1", "S1 首次强分歧反核 · MA5/10"], ["S2", "S2 首次深度调整低吸 · MA20/30"], ["trend", "趋势模型·独立研究"]])}{choice("identityConfirmed", "已核验同期/板块核心地位？", yesNo)}{choice("averagePeriod", "研究均线", [["5", "MA5"], ["10", "MA10"], ["20", "MA20"], ["30", "MA30"]])}{choice("firstTouch", "本轮首次接近所选均线？", yesNo)}{input("averageBasis", "所选均线、复权口径、来源与观察时间", "text", "如：动态MA10；前复权；券商终端；09:40")}{input("identity", "核心地位证据（不是仅填连板数）", "text", "同期最高标/行业主动性/成交辨识度")}{choice("peers", "同周期/行业反馈支持？", yesNo)}{input("peerEvidence", "同伴反馈与新催化证据", "text")}</div>
+        {f.leaderClass === "C2" && <div className="form-grid two">{choice("lifecycleConfirmed", "已核验多轮进攻与持续资金共识？", yesNo)}{input("lifecycleEvidence", "持续活跃证据（日期、反包/新高、换手、板块地位）", "text")}</div>}
+        <p className="premium-source">{researchQualification(f, facts)}。身份不能仅凭5板确认；均线触及只进入观察，S1/S2仍需恐慌阶段及承接核验。</p>
+        <Button variant="outline" onClick={() => set("entrySnapshot", JSON.stringify({ capturedAt: new Date().toISOString(), date, code, ruleVersion: "2.0", fields: { ...f, entrySnapshot: undefined }, facts: facts || null }))}>冻结当前研究与入场依据</Button>{f.entrySnapshot && <details><summary>已冻结的入场依据（再次点击将替换）</summary><pre className="overflow-auto whitespace-pre-wrap text-xs">{f.entrySnapshot}</pre></details>}
+        <details><summary>重复修复、筹码与失败样本</summary><div className="form-grid two">{input("repairCount", "本轮第几次修复尝试")}{text("supply", "上方套牢筹码与前次修复失败", "记录反复跌破的反例；重复触线不得自动恢复资格；C1超过10日、C2双时钟超过20日降级保留。")}{text("rejection", "淘汰原因/不交易理由", "即使不买也留下记录，避免只收集成功反包。")}</div></details>
       </CardContent></Card>
       <Card><CardHeader><CardTitle>承接与买点 · A / B分别核验</CardTitle></CardHeader><CardContent className="space-y-4">
         <p className="premium-source">L为恐慌低点，H为首次反抽高点。A：突破H后下一分钟仍维持H上方；B：突破后首次缩量回踩H±0.5%守住，再突破回踩高点。分钟数据手动核对，量比基准必须为此前5根已完成分钟线。形态满足后仍需通过“盘中执行”的既有闸门。</p>
@@ -122,20 +131,21 @@ export function LowAbsorptionFunnel({ date, fields, onChange, summary, onExport,
         {text("conclusion", "今日唯一结论", "只写最重要的事实、是否参与和证伪条件。")}
       </CardContent></Card>
       <Card><CardHeader><CardTitle>风险预算与退出 · 不机械等涨5%</CardTitle></CardHeader><CardContent className="space-y-4"><details><summary>计划交易时填写：预算、退出与事后结果</summary>
-        <div className="form-grid two">{input("equity", "账户净值（元）")}{input("riskPct", "单笔计划风险占净值 %")}{input("positionCap", "本笔资金上限占净值 %")}{input("entry", "计划买入价")}{input("stop", "失效退出参考价")}{input("target", "最近压力/计划目标价")}{input("costPct", "往返费用与滑点估计（占买入金额 %）")}{input("timeStop", "无主动修复的审查时限", "text", "如：次日10:00；1—2个交易日参数待验证")}</div>
-        <p className="premium-source">{risk ? `计划风险预算 ¥${money(risk.budget)}；按100股一手计算 ${risk.shares} 股 / ¥${money(risk.amount)}；参考价可成交时估计损失 ¥${money(risk.plannedLoss)}；扣估计成本后的收益/风险 ${risk.rewardRisk.toFixed(2)}。${risk.rewardRisk < 1 ? "目标空间小于估计失败成本，需重新评估。" : ""}` : "补齐有效账户金额、风险比例、仓位上限、买入/退出/目标价格及成本后计算。"}</p>
+        <div className="form-grid two">{input("equity", "账户净值（元）")}{input("riskPct", "单笔计划风险占净值 %")}{input("positionCap", "本笔资金上限占净值 %")}{input("entry", "计划买入价")}{input("stop", "失效退出参考价")}{input("target", "最近压力/计划目标价")}{input("costPct", "往返费用与滑点估计（占买入金额 %）")}{input("minRewardRisk", "第一压力区最低计划赔率（初版1.5，待验证）")}{input("timeStop", "无主动修复的审查时限", "text", "如：次日10:00；1—2个交易日参数待验证")}</div>
+        <p className="premium-source">{risk ? `计划风险预算 ¥${money(risk.budget)}；按100股一手计算 ${risk.shares} 股 / ¥${money(risk.amount)}；参考价可成交时估计损失 ¥${money(risk.plannedLoss)}；扣估计成本后的收益/风险 ${risk.rewardRisk.toFixed(2)}。${risk.rewardRisk < (Number(f.minRewardRisk) > 0 ? Number(f.minRewardRisk) : 1.5) ? "低于第一压力区计划赔率准入线，需重新评估。" : ""}` : "补齐有效账户金额、风险比例、仓位上限、买入/退出/目标价格及成本后计算。"}</p>
         <p className="premium-source">此计算按普通A股100股买入单位估算；跳空、跌停无流动性、最低佣金或T+1可能使实际损失超过预算。恐慌低点L不是当天新仓可执行的止损保证。</p>
         <div className="form-grid two">{text("exitWeak", "次日冲高失败时怎样退出？", "冲高后跌破分时均价线、首次反抽失败且同伴无响应；按已填预案处理可卖仓位，不必等待+5%。")}{text("exitNone", "次日无修复/到时限怎样处理？", "预期为隔日套利，未修复不临时转为中线；写明审查时刻和动作。")}{text("exitThird", "反抽涨停后第三日怎样处理？", "竞价溢价、同伴、失效价格与减仓比例；继续持有需新证据。")}{text("exitActual", "实际退出、费用与无法成交原因")}</div>
-        <Button variant="outline" onClick={() => { onChange("candidate", `${stock.name} ${stock.code}`); onChange("allowedSetup", `${f.model || "待选模型"} / 买点${f.buyMethod || "待选"}；${f.conclusion || "待填写触发"}`); onChange("invalidations", f.exitNone || "待填写证伪"); }}>用于今晚候选1（替换原候选1）</Button>
+        <Button variant="outline" onClick={() => { onChange("candidate", `${stock.name} ${stock.code}`); onChange("allowedSetup", `${f.leaderClass} / ${f.strategy || "待选模式"} / MA${f.averagePeriod || "待选"} / 买点${f.buyMethod || "待选"}；${f.conclusion || "待填写触发"}`); onChange("invalidations", f.exitNone || "待填写证伪"); }}>用于今晚候选1（替换原候选1）</Button>
         <details><summary>入场后1—3日结果 / 未交易反例（可后补，不影响入场信号）</summary><div className="form-grid two">{choice("outcome", "处理结果", [["watch", "继续观察"], ["reject", "过滤淘汰"], ["miss", "有信号未交易"], ["trade", "已交易"]])}{input("actualEntry", "实际买入价")}{input("actualExit", "实际卖出价")}{input("fees", "手续费及滑点金额")}{[1, 2, 3].map((d) => <div key={d}>{input(`mfe${d}`, `${d}日内最高涨幅 %（相对入场价）`)}{input(`mae${d}`, `${d}日内最大回撤 %（相对入场价）`)}</div>)}{text("review", "事后复盘/失败原因")}</div></details>
       </details></CardContent></Card>
     </>}
+    <LowAbsorptionResearch date={date}/>
     <Card><CardHeader><CardTitle>历史与规则 · 按需展开</CardTitle></CardHeader><CardContent className="space-y-3">
       <details><summary>账户参数（统一维护，沿用盘中执行风控）</summary><div className="form-grid two">{[["currentEquity", "账户当前净值（全局）"], ["peakEquity", "账户历史峰值（全局）"], ["drawdownStopPct", "峰值回撤暂停阈值 %"], ["riskPerTradePct", "默认单笔风险占净值 %"], ["dailyStopR", "日内停止交易 R"], ["realizedR", "今日已实现 R"]].map(([key, label]) => <label className="field" key={key}><span>{label}</span><Input aria-label={label} type="number" step="any" value={fields[key] ?? ""} onChange={(e) => onChange(key, e.target.value)}/></label>)}</div><p className="premium-source">账户闸门继续生效；候选的预算计算默认引用净值与单笔风险比例，手动修改后作为该股票的计划快照保存。</p></details>
       <p className="premium-source">原历史记录：{summary.days}日 · 有交易日胜率{summary.winRate}% · 盈亏合计¥{money(summary.pnl)}。这是已录入账户数据，不是低吸策略回测胜率。</p>
       <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={onExport}>导出已有记录（含候选与反例）</Button><Button variant="outline" onClick={onToggleLegacy}>{legacyVisible ? "收起旧版四个栏目" : "临时展开旧版四个栏目"}</Button></div>
       {fields.funnelLow && <details><summary>查看V1未关联股票的承接记录</summary><p>L：{fields.funnelLow}；H：{fields.funnelHigh || "待填"}；分钟收盘：{fields.funnelMinuteClose || "待填"}；量比：{fields.funnelVolumeRatio || "待填"}。{fields.funnelConclusion}</p><p className="premium-source">原记录保留导出；为避免串股，不自动套用到当前股票。</p></details>}
-      <p className="premium-source">1—5/6—10/11—15日、3分钟止跌、1.5倍量与±0.5%回踩均为待回测参数，不代表已有统计优势。只有盘后日线事实自动采集，分钟承接仍需核对。</p>
+      <p className="premium-source">C1优先MA10、C2扩展MA20/30均为待验证假设。3分钟止跌、1.5倍量、±0.5%回踩与1.5计划赔率尚未证明优势；分钟承接仍需真实终端核对。</p>
       {!validDate(date) && <p role="alert">请选择有效日期。</p>}
     </CardContent></Card>
   </div>;
