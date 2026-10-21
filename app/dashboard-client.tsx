@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { listRevisions, pullDocument, pushDocument, verifyRepository, type GitHubConfig, type GitHubRevision, type ReviewDocument } from "@/lib/github-store";
 import { YesterdayPremium } from "@/app/yesterday-premium";
+import { LowAbsorptionFunnel } from "@/app/low-absorption-funnel";
 import { LimitReview } from "@/app/limit-review";
 import { EffectObserver } from "@/app/effect-observer";
 import { StrategyWorkbench } from "@/app/strategy-workbench";
@@ -128,6 +129,7 @@ export function DashboardClient() {
   const [migrating, setMigrating] = useState(false);
   const [revisions, setRevisions] = useState<GitHubRevision[]>([]);
   const [revisionBusy, setRevisionBusy] = useState(false);
+  const [showLegacy, setShowLegacy] = useState(false);
   const dirtyRef = useRef(false);
   const dateRef = useRef(date);
   const revisionRef = useRef(revision);
@@ -378,20 +380,21 @@ export function DashboardClient() {
       {legacyCount > 0 && <div className="notice-row"><div><strong>检测到本设备有 {legacyCount} 个旧版记录</strong><p>可以一次迁移到 GitHub；已有同日期记录不会被覆盖。</p></div><Button onClick={() => void migrateLegacy()} disabled={migrating}><Upload />{migrating ? "正在迁移" : "迁移旧记录"}</Button></div>}
       {conflict && <div className="conflict-row"><div><strong>保存前发现另一台设备已更新 {date}</strong><p>系统已经拉取最新版。你可以载入对方版本，或把本页作为一个新提交覆盖该交易日；其他日期不会受影响。</p></div><div><Button variant="outline" onClick={() => applyRecord(conflict, date)}>载入 GitHub 最新版</Button><Button variant="destructive" onClick={() => void save(true)}>提交本页版本</Button></div></div>}
       <div className="metrics"><div><span>当前净值</span><strong>{money(current)}</strong></div><div><span>累计收益</span><strong className={current >= start ? "up" : "down"}>{((current / start - 1) * 100).toFixed(2)}%</strong></div><div><span>距峰值回撤</span><strong className="down">{((current / peak - 1) * 100).toFixed(2)}%</strong></div><div><span>今日模式</span><strong>{f.ticketStrategy || f.tradeMode}</strong></div><div><span>今日已实现 R</span><strong className={Number(f.realizedR) >= 0 ? "up" : "down"}>{Number(f.realizedR || 0).toFixed(1)}R</strong></div></div>
-      <section className="jinjian-guardrail" aria-label="金健米业复盘形成的交易护栏">
-        <div className="guardrail-heading"><AlertTriangle /><div><span>9·24 金健米业复盘 · 开仓前强制阅读</span><strong>价格到了，但环境没到，就不是买点。</strong></div></div>
+      <details><summary>按需查看：既有交易护栏与复盘原则</summary><section className="jinjian-guardrail" aria-label="金健米业复盘形成的交易护栏">
+        <div className="guardrail-heading"><AlertTriangle /><div><span>金健米业复盘 · 执行护栏</span><strong>价格到了，但环境没到，就不是买点。</strong></div></div>
         <div className="guardrail-rules">
           <div><b>01 · 环境一票否决</b><p>大盘缩量且承接恶化、同题材两只以上核心负反馈，或高位辨识度批量补跌：停止加仓。环境优先于个股价格与昨晚计划。</p></div>
-          <div><b>02 · 试错仓先于确认仓</b><p>9:30—9:35 首笔只买观察权；板块、核心地位与资金链确认后再加。T+1 当天不能卖，仓位本身就是止损。</p></div>
+          <div><b>02 · 试错仓先于确认仓</b><p>9:30—9:35 只观察，9:35后首笔只买观察权；板块、核心地位与资金链确认后再加。T+1 当天不能卖，仓位本身就是止损。</p></div>
           <div><b>03 · 异动空间不是买盘</b><p>距 100%/200% 红线还有空间，只代表“允许涨多少”，不代表市场愿意买。T-1 高度共识、节前与隔夜风险叠加时禁止满仓。</p></div>
           <div><b>04 · 修复必须验证传导链</b><p>新题材活口 → 辨识度龙头 → 老核心的尾盘回补，只能定义为局部修复；次日链条断裂，就不能当成全面回暖。</p></div>
           <div><b>05 · 禁止逻辑漂移</b><p>绕异动理由失效，这笔交易结束；不能临时改名为“龙回头/二波”给持仓续命。新模式必须重新开独立交易票。</p></div>
         </div>
         <p className="guardrail-bottom">执行顺序：先看赚钱效应与负反馈 → 再看身份和资金链 → 最后才看价格、异动余量与形态。</p>
-      </section>
-      {accountIssues.length > 0 && <div className="notice-row"><div><strong>账户风险闸门：暂不新增交易</strong><p>{accountIssues.join("；")}。在“策略与风控”中核对风险预算及恢复条件。</p></div></div>}
-      <Tabs defaultValue="effect" className="main-tabs"><TabsList className="tab-list"><TabsTrigger value="effect">赚钱效应</TabsTrigger><TabsTrigger value="system">策略与风控</TabsTrigger><TabsTrigger value="plan">今晚计划</TabsTrigger><TabsTrigger value="opening">盘中执行</TabsTrigger><TabsTrigger value="review">盘后复盘</TabsTrigger><TabsTrigger value="limit">涨停复盘图</TabsTrigger><TabsTrigger value="history">历史统计</TabsTrigger></TabsList>
+      </section></details>
+      {accountIssues.length > 0 && <div className="notice-row"><div><strong>账户风险闸门：暂不新增交易</strong><p>{accountIssues.join("；")}。请在“低吸雷达”核查后，于“今晚计划/盘中执行”落实风控。</p></div></div>}
+      <Tabs defaultValue="funnel" className="main-tabs" data-compact={!showLegacy}><TabsList className="tab-list"><TabsTrigger value="effect">赚钱效应</TabsTrigger><TabsTrigger value="funnel">低吸雷达</TabsTrigger><TabsTrigger value="plan">今晚计划</TabsTrigger><TabsTrigger value="opening">盘中执行</TabsTrigger>{showLegacy && <><TabsTrigger value="system">旧·策略风控</TabsTrigger><TabsTrigger value="review">旧·盘后复盘</TabsTrigger><TabsTrigger value="limit">旧·涨停图</TabsTrigger><TabsTrigger value="history">旧·历史统计</TabsTrigger></>}</TabsList>
         <TabsContent value="effect"><EffectObserver fields={f} onChange={updateField} recent={recentEffectDays} /></TabsContent>
+        <TabsContent value="funnel"><LowAbsorptionFunnel date={date} fields={f} onChange={updateField} summary={{ days: records.length, winRate: String(stats.winRate), pnl: stats.totalPnl }} onExport={exportCloud} onToggleLegacy={() => setShowLegacy((v) => !v)} legacyVisible={showLegacy} /></TabsContent>
         <TabsContent value="system"><StrategyWorkbench fields={f} onChange={updateField} /></TabsContent>
         <TabsContent value="limit" className="panel-grid"><LimitReview date={date} /><Card className="span-6"><CardHeader><CardTitle>我的题材与竞争关系</CardTitle></CardHeader><CardContent><Textarea value={f.reviewThemes ?? ""} onChange={(e) => updateField("reviewThemes", e.target.value)} placeholder="主线、支线、板块竞争与证据；只存入私人复盘" /></CardContent></Card><Card className="span-6"><CardHeader><CardTitle>我的核心角色判断</CardTitle></CardHeader><CardContent><Textarea value={f.reviewRoles ?? ""} onChange={(e) => updateField("reviewRoles", e.target.value)} placeholder="龙头、中军、补涨、20cm 核心及证伪条件；由我确认" /></CardContent></Card></TabsContent>
         <TabsContent value="plan" className="panel-grid">

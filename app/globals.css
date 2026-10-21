@@ -411,3 +411,15 @@ button, input, textarea { font: inherit; }
 .effect-table input { min-width: 125px; }
 .effect-table td:nth-child(3) input { min-width: 230px; }
 .effect-observer .field textarea { min-height: 80px; }
+
+/* Keep the unified radar's facts readable while confining wide tables to their card. */
+.low-absorption-funnel .table-wrap table { width: 100%; border-collapse: collapse; }
+.low-absorption-funnel .table-wrap th, .low-absorption-funnel .table-wrap td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+.low-absorption-funnel .table-wrap th { color: var(--muted-foreground); font-size: 13px; }
+.low-absorption-funnel summary { cursor: pointer; line-height: 1.6; }
+.low-absorption-funnel details[open] > summary { margin-bottom: 12px; }
+
+@media (max-width: 720px) {
+  .main-tabs[data-compact="true"] > .tab-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .main-tabs[data-compact="true"] > .tab-list button { min-width: 0; padding: 9px 4px; font-size: 13px; }
+}
