@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "source": "上证指数实际日K / 腾讯备用",
+  "source": "上证指数实际日K / 东方财富直连",
   "coveredFrom": "2026-04-01",
   "coveredThrough": "2026-10-28",
   "sessions": [
