@@ -4,7 +4,7 @@ export type FunnelDay = { date: string; stocks: FunnelStock[] };
 export type TradingCalendar = { schemaVersion: 1; source: string; coveredFrom: string; coveredThrough: string; sessions: string[] };
 export type FunnelCandidate = { code: string; name: string; industry: string; maxBoards: number; lastBoard: string; age: number | null; missingAfter: number; limitCount10: number; leaderClass: LeaderClass };
 export type DailyMetric = {
-  code: string; dataDate?: string; error?: string; close?: number; drawdownPct?: number; fallingDays?: number;
+  code: string; dataDate?: string; error?: string; priceSource?: string; volumeUnit?: string; close?: number; drawdownPct?: number; fallingDays?: number;
   volumeRatio?: number | null; turnoverRate?: number | null; research?: ResearchFacts;
   averages?: { period: number; value: number | null; distancePct: number | null; firstTouchDate: string | null }[];
   recent?: { date: string; close: number; volume: number; turnoverRate: number | null; limitDown: boolean; volumeRatio: number | null }[];
@@ -107,6 +107,7 @@ export function readRadar(v: unknown, date: string): RadarSnapshot | null {
   for (const s of v.stocks) {
     if (!record(s) || typeof s.code !== "string" || !/^\d{6}$/.test(s.code)) return null;
     if (typeof s.error === "string") continue;
+    if (["priceSource", "volumeUnit"].some((k) => s[k] !== undefined && typeof s[k] !== "string")) return null;
     if (s.research !== undefined && !readResearchFacts(s.research, date)) return null;
     if (s.dataDate !== date || typeof s.close !== "number" || !Number.isFinite(s.close) || s.close <= 0 || !numberOrNull(s.drawdownPct) || !numberOrNull(s.volumeRatio) || !Array.isArray(s.averages) || !Array.isArray(s.recent)) return null;
     if (!s.averages.every((a) => record(a) && [5, 10, 20, 30].includes(Number(a.period)) && numberOrNull(a.value) && numberOrNull(a.distancePct) && (a.firstTouchDate === null || validDate(a.firstTouchDate) && a.firstTouchDate <= date))) return null;
