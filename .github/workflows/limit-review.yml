@@ -2,6 +2,12 @@ name: Archive daily limit-up review
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/build_low_absorption.py
+      - scripts/market_history.py
+      - .github/workflows/limit-review.yml
   schedule:
     # 15:20 and 16:10 China time; later attempt may add disclosed LHB rows.
     - cron: '20 7 * * 1-5'
@@ -30,6 +36,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk
       - run: python scripts/build_limit_review.py
       - name: Build end-of-day low absorption radar
+        id: radar
         continue-on-error: true
         run: |
           git fetch origin market-data
@@ -82,3 +89,21 @@ jobs:
             git commit -m "market: archive limit-up review $day"
             git push origin HEAD:market-data
           fi
+
+      - name: Verify radar publication health
+        if: always()
+        run: |
+          python - <<'PYHEALTH'
+          import json
+          from datetime import datetime
+          from pathlib import Path
+          from zoneinfo import ZoneInfo
+          day = datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y/%m/%Y-%m-%d.json")
+          root = Path("/tmp/low-absorption")
+          radar = json.loads((root / "radar" / day).read_text())
+          report = json.loads((root / "research" / day).read_text())
+          valid = sum("error" not in s for s in radar["stocks"])
+          print(f"雷达健康：{valid}/{len(radar['stocks'])}有当日日线；研究事件{len(report['rows'])}")
+          if radar["stocks"] and not valid:
+              raise SystemExit("所有候选行情缺失；原涨停归档已保留，但雷达采集不可标为成功")
+          PYHEALTH

@@ -8,6 +8,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from low_absorption_research import archive_identity, research_facts
+from market_history import load_sessions, load_stock
 
 
 def finite(value, positive=False):
@@ -102,29 +103,25 @@ def candidates(days, sessions):
 
 
 def main():
-    import akshare as ak
     parser = argparse.ArgumentParser()
     parser.add_argument("--archive-dir", type=Path, required=True)
     parser.add_argument("--today", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--trade-date", help="明确指定历史交易日用于补采；默认北京时间当天")
     args = parser.parse_args()
     now = datetime.now(ZoneInfo("Asia/Shanghai"))
-    through = now.date().isoformat()
-    if now.hour < 15:
+    through = args.trade_date or now.date().isoformat()
+    as_of = date.fromisoformat(through)
+    if as_of > now.date():
+        raise ValueError("禁止生成未来日线快照")
+    if as_of == now.date() and now.hour < 15:
         raise RuntimeError("仅收盘后生成，不把盘中日线当收盘数据")
     today = json.loads(args.today.read_text(encoding="utf-8"))
     if today.get("tradeDate") != through:
         raise ValueError("当日涨停归档日期不匹配")
-    start = (now.date() - timedelta(days=210)).strftime("%Y%m%d")
-    compact = now.strftime("%Y%m%d")
-    # Actual index sessions avoid treating holidays or missing stock archives as trading days.
-    index = ak.index_zh_a_hist(symbol="000001", period="daily", start_date=start, end_date=compact)
-    sessions = sorted(str(d)[:10] for d in index["日期"])
-    if not sessions or sessions[-1] != through or len(sessions) < 60 or len(set(sessions)) != len(sessions):
-        raise ValueError("指数交易日历不足/未更新，停止发布而非估算交易日")
-    for day in sessions:
-        date.fromisoformat(day)
-    calendar = {"schemaVersion": 1, "source": "上证指数已完成日K日期 / AKShare index_zh_a_hist / 东方财富", "coveredFrom": sessions[0], "coveredThrough": through, "sessions": sessions}
+    start = (as_of - timedelta(days=210)).isoformat()
+    sessions, calendar_source = load_sessions(start, through)
+    calendar = {"schemaVersion": 1, "source": calendar_source, "coveredFrom": sessions[0], "coveredThrough": through, "sessions": sessions}
     scan = sessions[-45:]
     archives = load_archives(args.archive_dir, sessions[-65:], today)  # 45-day identity warmup + 20-day study.
     missing = [d for d in scan if d not in archives]
@@ -138,20 +135,19 @@ def main():
         try:
             if time.monotonic() >= deadline:
                 raise TimeoutError("本批采集预算用尽；候选保留，下次补齐")
-            frame = ak.stock_zh_a_hist(symbol=code, period="daily", start_date=start, end_date=compact, adjust="qfq", timeout=15)
-            bars = normalize_bars(frame, through)
+            bars, provenance = load_stock(code, start, through)
             # An internal omission must not shift MAs or count a false 'first' touch.
             expected = {d for d in sessions if bars[0]["date"] <= d <= through}
             if expected != {r["date"] for r in bars}:
                 raise ValueError("日线存在缺口/停牌；均线与首次触线待人工核对")
             facts = metrics(code, bars, candidate["lastBoard"], through, downs)
-            return {**candidate, **facts, "research": research_facts(code, bars, archives, sessions, through)}
+            return {**candidate, **facts, **provenance, "research": research_facts(code, bars, archives, sessions, through)}
         except Exception as exc:
             print(f"{code} 日线缺失：{type(exc).__name__}")
             return {**candidate, "error": str(exc)[:250]}
     with ThreadPoolExecutor(max_workers=4) as executor:
         stocks = list(executor.map(collect, pool))
-    snapshot = {"schemaVersion": 1, "tradeDate": through, "observedAt": now.isoformat(timespec="seconds"), "source": "东方财富日线 / AKShare stock_zh_a_hist；涨跌停池为现有归档", "adjustment": "前复权qfq；采集时口径；成交量单位手；仅收盘事实", "calendar": calendar, "missingArchives": missing, "stocks": stocks}
+    snapshot = {"schemaVersion": 1, "tradeDate": through, "observedAt": now.isoformat(timespec="seconds"), "source": "同股整段同源日线；逐股priceSource标注；涨跌停池为现有归档", "adjustment": "前复权qfq；采集时口径；成交量详见逐股volumeUnit；仅收盘事实", "calendar": calendar, "missingArchives": missing, "stocks": stocks}
     output = args.out / "radar" / through[:4] / through[5:7]
     output.mkdir(parents=True, exist_ok=True)
     (output / f"{through}.json").write_text(json.dumps(snapshot, ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8")
