@@ -81,7 +81,10 @@ def em_params(secid, start, through, adjusted):
 
 
 def tx_params(symbol, start, through):
-    return {"param": f"{symbol},day,{start},{through},640,qfq"}
+    # The bounded Tencent qfq endpoint can omit the live closing bar even when
+    # the end date is later. Ask for latest, then validate_bars strictly clips
+    # to through and requires that day's close; never splice raw live quotes.
+    return {"param": f"{symbol},day,{start},,640,qfq"}
 
 
 def load_sessions(start, through, fetch=get_json):

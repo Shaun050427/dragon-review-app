@@ -22,6 +22,7 @@ class HistoryTest(unittest.TestCase):
                 raise URLError('primary unavailable')
             self.assertEqual(url, TX)
             self.assertTrue(params['param'].startswith('sh000001,day,'))
+            self.assertIn(',,640,qfq', params['param'])
             return self.tx()
         sessions, source = load_sessions(self.start, self.through, fetch)
         self.assertEqual(sessions, self.sessions)
