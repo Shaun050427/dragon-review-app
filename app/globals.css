@@ -451,3 +451,38 @@ button, input, textarea { font: inherit; }
  .workflow .discipline-rule { padding:12px; }
  .workflow [data-slot="card-header"],.workflow [data-slot="card-content"] { padding-left:14px; padding-right:14px; }
 }
+
+/* Compact rule list: read first, edit or expand cases on demand. */
+.discipline-list { display:grid; gap:0; }
+.workflow .compact-rule { grid-template-columns:28px minmax(0,1fr) minmax(150px,23%) 112px; gap:12px; align-items:center; padding:12px 0; border:0; border-bottom:1px solid var(--border); border-radius:0; background:none; }
+.workflow .compact-rule:last-child { border-bottom:0; }
+.workflow .compact-rule .drag-handle { display:grid; justify-items:center; align-self:start; border:0; padding:2px; font-size:23px; line-height:1; }
+.compact-rule .drag-handle small { color:var(--muted-foreground); font-size:11px; margin-top:5px; }
+.discipline-content p { margin:0; font-size:14px; line-height:1.55; white-space:pre-wrap; }
+.discipline-content strong { display:block; font-weight:650; }
+.discipline-content span { color:var(--muted-foreground); font-size:13px; }
+.workflow .discipline-content-editor { min-height:66px; font-size:14px; line-height:1.5; }
+.discipline-case-links { display:flex; flex-wrap:wrap; gap:3px 10px; align-content:start; align-self:start; padding-top:2px; font-size:12px; }
+.discipline-case-links button { cursor:pointer; color:var(--primary); text-align:left; }
+.discipline-case-links .case-preview { flex-basis:100%; color:var(--muted-foreground); line-height:1.5; }
+.discipline-case-links .case-add { color:var(--muted-foreground); }
+.discipline-row-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px; align-self:start; }
+.discipline-row-actions button { font-size:12px; border-radius:5px; cursor:pointer; padding:3px 5px; color:var(--muted-foreground); }
+.discipline-row-actions button:hover:not(:disabled) { background:rgb(84 210 255 / 10%); color:var(--primary); }
+.discipline-row-actions button:disabled { opacity:.3; cursor:default; }
+.discipline-row-actions .rule-delete { color:#c7939a; }
+.discipline-case-panel { grid-column:2/-1; display:grid; gap:10px; padding:12px; border:1px solid var(--border); border-radius:8px; }
+.discipline-case-panel .classic-case { display:grid; gap:10px; }
+.case-facts { font-size:13px; white-space:pre-wrap; }
+.case-facts p { margin:3px 0; }
+.repair-settings > summary { padding:10px 0; color:var(--muted-foreground); font-size:13px; }
+@media(max-width:720px) {
+ .workflow .compact-rule { grid-template-columns:22px minmax(0,1fr) 102px; gap:6px 8px; padding:12px 0; }
+ .compact-rule .drag-handle { grid-column:1; grid-row:1/3; }
+ .discipline-content { grid-column:2/-1; grid-row:2; }
+ .discipline-row-actions { grid-column:3; grid-row:1; }
+ .discipline-case-links { grid-column:2; grid-row:1; font-size:11px; }
+ .discipline-case-links .case-preview { display:none; }
+ .discipline-case-panel { grid-column:2/-1; }
+ .discipline-board .history-head .workflow-actions { width:100%; }
+}
