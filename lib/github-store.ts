@@ -13,6 +13,7 @@ export type ReviewDocument = {
   schemaVersion: 5 | 6 | 7;
   updatedAt: string;
   records: Record<string, StoredReview>;
+  disciplineBook?: import("./trading-discipline").DisciplineBook;
 };
 
 export type GitHubConfig = {

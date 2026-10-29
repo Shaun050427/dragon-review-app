@@ -97,7 +97,7 @@ def candidates(days, sessions):
     result = []
     for code, name in codes.items():
         identity = archive_identity(code, days, sessions, sessions[-1])
-        if identity["maxBoards"] >= 3 or identity["limitCount10"] >= 6:
+        if identity["maxBoards"] >= 2 or identity["limitCount10"] >= 6:
             result.append({"code": code, "name": name, **identity})
     return result
 

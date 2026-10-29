@@ -1,10 +1,10 @@
 export type Fields = Record<string, string>;
-export type FunnelStock = { code: string; name: string; industry: string; boards: number };
-export type FunnelDay = { date: string; stocks: FunnelStock[] };
+export type FunnelStock = { code: string; name: string; industry: string; boards: number; turnover?: number };
+export type FunnelDay = { date: string; stocks: FunnelStock[]; broken?: { code: string; name: string; industry: string }[] };
 export type TradingCalendar = { schemaVersion: 1; source: string; coveredFrom: string; coveredThrough: string; sessions: string[] };
 export type FunnelCandidate = { code: string; name: string; industry: string; maxBoards: number; lastBoard: string; age: number | null; missingAfter: number; limitCount10: number; leaderClass: LeaderClass };
 export type DailyMetric = {
-  code: string; dataDate?: string; error?: string; priceSource?: string; volumeUnit?: string; close?: number; drawdownPct?: number; fallingDays?: number;
+  code: string; name?: string; industry?: string; maxBoards?: number; dataDate?: string; error?: string; priceSource?: string; volumeUnit?: string; close?: number; drawdownPct?: number; fallingDays?: number;
   volumeRatio?: number | null; turnoverRate?: number | null; research?: ResearchFacts;
   averages?: { period: number; value: number | null; distancePct: number | null; firstTouchDate: string | null }[];
   recent?: { date: string; close: number; volume: number; turnoverRate: number | null; limitDown: boolean; volumeRatio: number | null }[];
@@ -35,7 +35,8 @@ export function readArchive(value: unknown, date: string): FunnelDay | null {
   if (!validDate(date) || !record(value) || value.schemaVersion !== 1 || value.tradeDate !== date || !Array.isArray(value.stocks)) return null;
   if (!value.stocks.every((s) => record(s) && typeof s.code === "string" && /^\d{6}$/.test(s.code) && typeof s.name === "string" && s.name.trim() && Number.isInteger(s.boards) && Number(s.boards) >= 1)) return null;
   if (new Set(value.stocks.map((s) => s.code)).size !== value.stocks.length) return null;
-  return { date, stocks: value.stocks as FunnelStock[] };
+  const broken = Array.isArray(value.broken) ? value.broken.filter(s => record(s) && typeof s.code === "string" && /^\d{6}$/.test(s.code) && typeof s.name === "string" && typeof s.industry === "string") as FunnelDay["broken"] : [];
+  return { date, stocks: value.stocks as FunnelStock[], broken };
 }
 export function discoverCandidates(days: FunnelDay[], date: string, calendar: TradingCalendar | null): FunnelCandidate[] {
   const history = new Map<string, FunnelCandidate>();
@@ -65,9 +66,9 @@ export function entrySignal(f: Fields): { triggered: boolean; message: string } 
   if (l === null || h === null || close === null || ratio === null || l <= 0 || h <= l || close <= 0 || ratio < 0) return no("待填写有效L、H、已完成分钟收盘与量比。");
   if (close <= l || f.retest === "failed") return no("低点/回踩失守，本次结构失效；需重新识别L、H。");
   if (f.stopped !== "yes" || f.firstTouch !== "yes") return no("先核实连续3根1分钟未破L（或一根5分钟止跌）及首次触线。");
-  if (!["S1", "S2", "trend"].includes(strategyOf(f)) || !f.identity?.trim() || f.peers !== "yes") return no("补齐模型、核心地位证据与同伴/行业反馈。");
+  if (!["S0", "S1", "S2", "trend"].includes(strategyOf(f)) || !f.identity?.trim() || f.peers !== "yes") return no("补齐模型、核心地位证据与同伴/行业反馈。");
   if (f.strategy && researchQualification(f) !== "身份人工核验已记录") return no(researchQualification(f));
-  if (f.strategy && (f.strategy === "S1" && !["5", "10"].includes(f.averagePeriod) || f.strategy === "S2" && !["20", "30"].includes(f.averagePeriod))) return no("请核对模式与均线：S1研究MA5/10，S2研究MA20/30。");
+  if (f.strategy && (f.strategy === "S0" && f.averagePeriod !== "5" || f.strategy === "S1" && !["5", "10", "none"].includes(f.averagePeriod) || f.strategy === "S2" && !["20", "30"].includes(f.averagePeriod))) return no("请核对模式与均线：S0为MA5；S1日内反核可不绑定均线；S2仅观察MA20/30。");
   if (close <= h || ratio < 1.5) return no("待一分钟收盘突破H且本分钟量/此前5根均量≥1.5。");
   if (f.buyMethod === "A") {
     if (f.nextHeld !== "yes") return no("A：突破后仍需核对下一分钟维持H上方；无需强求二次测试L。");
@@ -134,7 +135,7 @@ export function researchQualification(f: Fields, facts?: ResearchFacts) {
   const kind = f.leaderClass || facts?.leaderClass || "unclassified";
   if (!f.identity?.trim() || f.identityConfirmed !== "yes") return "待核核心地位，连板门槛仅作提名";
   if (kind === "C2" && (!f.lifecycleEvidence?.trim() || f.lifecycleConfirmed !== "yes")) return "C2待核多轮进攻、换手与持续共识";
-  if (kind === "C3" && strategyOf(f) !== "trend") return "C3单独研究，不能沿用连板龙S1/S2";
+  if (kind === "C3" && !["trend", "S0"].includes(strategyOf(f))) return "C3单独研究，不能沿用连板龙S1/S2";
   if (kind === "unclassified" || !["C1", "C2", "C3"].includes(kind)) return "请选择龙头身份";
   return "身份人工核验已记录";
 }

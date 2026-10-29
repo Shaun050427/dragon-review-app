@@ -21,6 +21,7 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: node scripts/check_low_absorption.mjs && node scripts/check_low_absorption_v2.mjs
       - run: node scripts/check_liquidity_plan.mjs && node scripts/check_strategy_research.mjs && node scripts/check_trade_certainty.mjs
+      - run: node scripts/check_candidate_workflow.mjs && node scripts/check_trading_ui.mjs
       - run: python -m unittest discover -s scripts -p 'test_low_absorption*.py'
       - run: pnpm lint
       - run: pnpm build
