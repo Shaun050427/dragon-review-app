@@ -76,6 +76,6 @@ def research_facts(code, bars, days, sessions, through):
                 first = first or b["date"]
             previous = current
         touches.append({"period": period, "touchCount": count, "firstTouchDate": first, "touching": current,
-                        "stage": "S1候选·首次强分歧待核" if period <= 10 else "S2候选·首次深调待核"})
+                        "stage": "S0候选·首次MA5待核" if period == 5 else "S1候选·反核待核" if period == 10 else "S2观察·首次深调待核"})
     return {"ruleVersion": RULE_VERSION, **identity, "lastActive": active, "boardAge": board_age, "activeAge": active_age,
             "priority": priority, "touches": touches}

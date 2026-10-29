@@ -23,6 +23,12 @@ import { certaintyPlanIssues } from "@/lib/trade-certainty";
 import { CertaintyReview } from "@/app/trade-certainty";
 import { StrategyResearch } from "@/app/strategy-research";
 import { accountRisk } from "@/lib/strategy-research";
+import { TradingDiscipline } from "@/app/trading-discipline";
+import { TradingPreparation } from "@/app/trading-preparation";
+import { ExecutionJournal, PlannedExecution } from "@/app/planned-execution";
+import { defaultBook, readBook, sameBook, type DisciplineBook } from "@/lib/trading-discipline";
+import { chinaDate, executionIssues, readSamples } from "@/lib/candidate-workflow";
+import type { TradingCalendar } from "@/lib/low-absorption";
 
 type Payload = { fields: Record<string, string>; checks: Record<string, boolean> };
 type CloudRecord = { date: string; payload: Payload; revision: string; updatedAt: string; device?: string };
@@ -84,7 +90,7 @@ const gateChecks = [
 const disciplineChecks = [
   ["disc_plan", "昨晚有书面预案"], ["disc_one", "只在三个预设候选里选一只执行"],
   ["disc_wait", "非模式内则空仓"], ["disc_environment", "价格到位但环境未到时，没有继续加仓"],
-  ["disc_probe", "试错仓先于确认仓，没有一步打满"], ["disc_time", "10:00后未开新仓"],
+  ["disc_probe", "试错仓先于确认仓，没有一步打满"], ["disc_time", "未临时开盘前名单之外的新仓"],
   ["disc_size", "仓位未超上限"], ["disc_noadd", "证伪后未加仓"],
   ["disc_no_drift", "原始理由失效后没有改成反抽/二波继续持有"],
   ["disc_exit", "卖出按预案执行"], ["disc_truth", "只用当时可知信息复盘"],
@@ -97,8 +103,7 @@ const disciplineChecks = [
 ];
 
 function isoToday() {
-  const date = new Date();
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  return chinaDate();
 }
 
 function money(value: string | number) {
@@ -136,6 +141,15 @@ export function DashboardClient() {
   const payloadRef = useRef(payload);
   const configRef = useRef<GitHubConfig | null>(config);
   const basePayloadRef = useRef<Payload>(defaultPayload());
+  const [book, setBook] = useState<DisciplineBook>(defaultBook);
+  const [bookDirty, setBookDirty] = useState(false);
+  const [bookConflict, setBookConflict] = useState<DisciplineBook | null>(null);
+  const [calendar, setCalendar] = useState<TradingCalendar | null>(null);
+  const [saveEpoch, setSaveEpoch] = useState(0);
+  const bookRef = useRef(book), bookDirtyRef = useRef(false), baseBookRef = useRef(defaultBook());
+  const bookConflictRef = useRef<DisciplineBook | null>(null), saveLock = useRef(false), syncEpoch = useRef(0);
+  const updateBook = (next: DisciplineBook) => { setBook(next); bookRef.current = next; setBookDirty(true); bookDirtyRef.current = true; };
+  const loadBook = (next: DisciplineBook) => { setBook(next); bookRef.current = next; baseBookRef.current = structuredClone(next); setBookDirty(false); bookDirtyRef.current = false; setBookConflict(null); bookConflictRef.current = null; };
 
   useEffect(() => { dirtyRef.current = dirty; }, [dirty]);
   useEffect(() => { dateRef.current = date; }, [date]);
@@ -157,6 +171,7 @@ export function DashboardClient() {
     const nextPayload = record?.payload ?? defaultPayload();
     setDate(targetDate);
     setPayload(nextPayload);
+    dateRef.current = targetDate; payloadRef.current = nextPayload; dirtyRef.current = false;
     basePayloadRef.current = structuredClone(nextPayload);
     setRevision(record?.revision ?? "");
     setDirty(false);
@@ -166,7 +181,13 @@ export function DashboardClient() {
 
   const fetchAll = useCallback(async (activeConfig = configRef.current, initial = false) => {
     if (!activeConfig) return [];
+    const epoch = syncEpoch.current;
     const latest = await pullDocument(activeConfig);
+    if ((saveLock.current || epoch !== syncEpoch.current) && !initial) return [];
+    const remoteBook = latest.document.disciplineBook === undefined ? defaultBook() : readBook(latest.document.disciplineBook);
+    if (!remoteBook) throw new Error("交易纪律格式无法识别，已保留本地内容，请先检查远端数据");
+    if (initial || !bookDirtyRef.current) { setBook(remoteBook); bookRef.current = remoteBook; baseBookRef.current = structuredClone(remoteBook); setBookDirty(false); bookDirtyRef.current = false; setBookConflict(null); bookConflictRef.current = null; }
+    else if (!sameBook(remoteBook, baseBookRef.current)) { setBookConflict(remoteBook); bookConflictRef.current = remoteBook; }
     const incoming = documentToRecords(latest.document, latest.sha);
     setRecords(incoming);
     const active = incoming.find((item) => item.date === dateRef.current);
@@ -226,46 +247,58 @@ export function DashboardClient() {
     return () => window.clearInterval(timer);
   }, [connected, fetchAll]);
 
-  const save = useCallback(async (force = false) => {
+  const save = useCallback(async (force = false, forceBook = false) => {
     const activeConfig = configRef.current;
-    if (!connected || !activeConfig || conflict && !force) return;
+    if (!connected || !activeConfig || saveLock.current || conflict && !force || bookConflictRef.current && !forceBook) return;
+    const targetDate = dateRef.current, snapshot = structuredClone(payloadRef.current), baseSnapshot = structuredClone(basePayloadRef.current), bookSnapshot = structuredClone(bookRef.current);
+    const dayWanted = dirtyRef.current || force, bookWanted = bookDirtyRef.current || forceBook;
+    if (!dayWanted && !bookWanted) return;
+    saveLock.current = true; syncEpoch.current += 1;
     setStatus("保存前正在拉取 GitHub 最新版…");
     try {
       const latest = await pullDocument(activeConfig);
-      const remote = latest.document.records[dateRef.current];
+      const remote = latest.document.records[targetDate];
       const remotePayload = remote?.payload ?? defaultPayload();
-      const remoteChanged = JSON.stringify(remotePayload) !== JSON.stringify(basePayloadRef.current);
-      if (remoteChanged && !force) {
-        setConflict({ date: dateRef.current, payload: remotePayload, revision: latest.sha?.slice(0, 7) ?? "新建", updatedAt: remote?.updatedAt ?? latest.document.updatedAt, device: remote?.device });
+      const remoteChanged = JSON.stringify(remotePayload) !== JSON.stringify(baseSnapshot);
+      if (dayWanted && remoteChanged && !force) {
+        if (dateRef.current === targetDate) setConflict({ date: targetDate, payload: remotePayload, revision: latest.sha?.slice(0, 7) ?? "新建", updatedAt: remote?.updatedAt ?? latest.document.updatedAt, device: remote?.device });
         setStatus("保存前发现同一交易日已有新版本");
         return;
       }
+      const remoteBook = latest.document.disciplineBook === undefined ? defaultBook() : readBook(latest.document.disciplineBook);
+      if (!remoteBook) throw new Error("远端纪律格式无效，已停止覆盖");
+      if (bookWanted && !sameBook(remoteBook,baseBookRef.current) && !forceBook) { setBookConflict(remoteBook); bookConflictRef.current = remoteBook; setStatus("另一台设备已修改纪律，本页内容仍保留"); return; }
       const now = new Date().toISOString();
-      const document: ReviewDocument = { ...latest.document, schemaVersion: 7, updatedAt: now, records: { ...latest.document.records, [dateRef.current]: { payload: payloadRef.current, updatedAt: now, device: activeConfig.device } } };
-      const result = await pushDocument(activeConfig, document, latest.sha, `data: 更新 ${dateRef.current}（${activeConfig.device}）`);
+      const document: ReviewDocument = { ...latest.document, schemaVersion: 7, updatedAt: now, records: { ...latest.document.records } };
+      if (dayWanted) document.records[targetDate] = { payload: snapshot, updatedAt: now, device: activeConfig.device };
+      if (bookWanted) document.disciplineBook = { ...bookSnapshot, updatedAt: now };
+      const result = await pushDocument(activeConfig, document, latest.sha, `data: 更新 ${targetDate}${bookWanted ? "与交易纪律" : ""}（${activeConfig.device}）`);
       const shortSha = result.commit.sha.slice(0, 7);
       const fileRevision = result.content.sha.slice(0, 7);
-      setRevision(fileRevision); revisionRef.current = fileRevision;
-      basePayloadRef.current = structuredClone(payloadRef.current);
-      setDirty(false); dirtyRef.current = false; setConflict(null);
+      if (dateRef.current === targetDate) {
+        setRevision(fileRevision); revisionRef.current = fileRevision;
+        if (dayWanted) { basePayloadRef.current = snapshot; const stillDirty = JSON.stringify(payloadRef.current) !== JSON.stringify(snapshot); setDirty(stillDirty); dirtyRef.current = stillDirty; setConflict(null); }
+      }
+      if (bookWanted) { baseBookRef.current = bookSnapshot; const stillDirty = !sameBook(bookRef.current,bookSnapshot); setBookDirty(stillDirty); bookDirtyRef.current = stillDirty; setBookConflict(null); bookConflictRef.current = null; }
       setRecords(documentToRecords(document, result.content.sha));
       setStatus(`已提交 GitHub · ${shortSha}`);
     } catch (error) { setStatus(error instanceof Error ? error.message : "提交失败，页面内修改仍保留"); }
+    finally { saveLock.current = false; syncEpoch.current += 1; setSaveEpoch(v=>v+1); }
   }, [connected, conflict, documentToRecords]);
 
   useEffect(() => {
-    if (!connected || !dirty || conflict) return;
+    if (!connected || !(dirty || bookDirty) || conflict || bookConflict) return;
     const timer = window.setTimeout(() => { void save(); }, 6000);
     return () => window.clearTimeout(timer);
-  }, [connected, conflict, dirty, payload, save]);
+  }, [connected, conflict, dirty, payload, save, book, bookDirty, bookConflict, saveEpoch]);
 
   const updateField = (key: string, value: string) => {
-    setPayload((current) => ({ ...current, fields: { ...current.fields, [key]: value } }));
-    setDirty(true);
+    setPayload((current) => { const next = { ...current, fields: { ...current.fields, [key]: value } }; payloadRef.current = next; return next; });
+    setDirty(true); dirtyRef.current = true;
   };
   const updateCheck = (key: string, value: boolean) => {
-    setPayload((current) => ({ ...current, checks: { ...current.checks, [key]: value } }));
-    setDirty(true);
+    setPayload((current) => { const next = { ...current, checks: { ...current.checks, [key]: value } }; payloadRef.current = next; return next; });
+    setDirty(true); dirtyRef.current = true;
   };
   const chooseDate = (nextDate: string) => {
     if (dirty && !confirm("本页还有尚未提交的修改，确定切换交易日？")) return;
@@ -309,7 +342,7 @@ export function DashboardClient() {
   };
 
   const exportCloud = () => {
-    const blob = new Blob([JSON.stringify({ version: 7, source: "github", exportedAt: new Date().toISOString(), records }, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ version: 7, source: "github", exportedAt: new Date().toISOString(), disciplineBook: bookRef.current, records }, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob); const anchor = document.createElement("a");
     anchor.href = url; anchor.download = `A股龙空龙GitHub复盘_${isoToday()}.json`; anchor.click(); URL.revokeObjectURL(url);
   };
@@ -366,7 +399,9 @@ export function DashboardClient() {
   const liquidityIssues = liquidityPlanIssues(f);
   const certaintyIssues = certaintyPlanIssues(f);
   const accountIssues = accountRisk(f).issues;
-  const gatePassed = gateChecks.every(([key]) => payload.checks[key]) && accountIssues.length === 0 && liquidityIssues.length === 0 && certaintyIssues.length === 0 && f.ticketStock === f.executionCandidate && f.tradeMode !== "空仓观察" && selectedIndex >= 0 && Boolean(selectedSetup?.trim()) && Boolean(selectedInvalidations?.trim()) && Number(f.maxPosition) > 0;
+  const workflowIssues = executionIssues(date,f,book,calendar);
+  const customIssues = book.rules.filter(r=>r.required && !payload.checks[`customDiscipline_${r.id}`]).map(r=>`必查纪律未核对：${r.title}`);
+  const gatePassed = workflowIssues.length === 0 && customIssues.length === 0 && gateChecks.every(([key]) => payload.checks[key]) && accountIssues.length === 0 && liquidityIssues.length === 0 && certaintyIssues.length === 0 && f.ticketStock === f.executionCandidate && f.tradeMode !== "空仓观察" && selectedIndex >= 0 && Boolean(selectedSetup?.trim()) && Boolean(selectedInvalidations?.trim()) && Number(f.maxPosition) > 0;
 
   if (!connected) {
     const set = (key: keyof typeof setup, value: string | boolean) => setSetup((current) => ({ ...current, [key]: value }));
@@ -376,7 +411,7 @@ export function DashboardClient() {
   return <main className="app-shell">
     <header className="topbar"><div><p className="eyebrow">顽主杯 · 10万组 · 龙空龙</p><h1>A股龙空龙 GitHub 复盘</h1></div><div className="top-actions"><Badge variant="outline" className="sync-badge"><GitBranch />{config?.owner}/{config?.repo} · {status}</Badge><Button variant="outline" asChild><a href={`${BASE_PATH}/research.html`}><BookOpen />历史周期库</a></Button><Button variant="ghost" size="icon" title="断开本设备" onClick={() => { localStorage.removeItem(GITHUB_TOKEN_STORAGE); location.reload(); }}><LogOut /></Button></div></header>
     <section className="workspace">
-      <div className="daybar"><div><label htmlFor="trade-date">交易日</label><Input id="trade-date" type="date" value={date} onChange={(e) => chooseDate(e.target.value)} /></div><div className="day-actions"><span className={dirty ? "dirty" : "saved"}>{dirty ? "修改将在停止输入6秒后提交" : `GitHub 版本 ${revision || "新建"}`}</span><Button onClick={() => void save()}><Save />立即提交</Button></div></div>
+      <div className="daybar"><div><label htmlFor="trade-date">交易日</label><Input id="trade-date" type="date" value={date} onChange={(e) => chooseDate(e.target.value)} /></div><div className="day-actions"><span className={dirty ? "dirty" : "saved"}>{dirty || bookDirty ? "修改将在停止输入6秒后提交" : `GitHub 版本 ${revision || "新建"}`}</span><Button onClick={() => void save()}><Save />立即提交</Button></div></div>
       {legacyCount > 0 && <div className="notice-row"><div><strong>检测到本设备有 {legacyCount} 个旧版记录</strong><p>可以一次迁移到 GitHub；已有同日期记录不会被覆盖。</p></div><Button onClick={() => void migrateLegacy()} disabled={migrating}><Upload />{migrating ? "正在迁移" : "迁移旧记录"}</Button></div>}
       {conflict && <div className="conflict-row"><div><strong>保存前发现另一台设备已更新 {date}</strong><p>系统已经拉取最新版。你可以载入对方版本，或把本页作为一个新提交覆盖该交易日；其他日期不会受影响。</p></div><div><Button variant="outline" onClick={() => applyRecord(conflict, date)}>载入 GitHub 最新版</Button><Button variant="destructive" onClick={() => void save(true)}>提交本页版本</Button></div></div>}
       <div className="metrics"><div><span>当前净值</span><strong>{money(current)}</strong></div><div><span>累计收益</span><strong className={current >= start ? "up" : "down"}>{((current / start - 1) * 100).toFixed(2)}%</strong></div><div><span>距峰值回撤</span><strong className="down">{((current / peak - 1) * 100).toFixed(2)}%</strong></div><div><span>今日模式</span><strong>{f.ticketStrategy || f.tradeMode}</strong></div><div><span>今日已实现 R</span><strong className={Number(f.realizedR) >= 0 ? "up" : "down"}>{Number(f.realizedR || 0).toFixed(1)}R</strong></div></div>
@@ -384,7 +419,7 @@ export function DashboardClient() {
         <div className="guardrail-heading"><AlertTriangle /><div><span>金健米业复盘 · 执行护栏</span><strong>价格到了，但环境没到，就不是买点。</strong></div></div>
         <div className="guardrail-rules">
           <div><b>01 · 环境一票否决</b><p>大盘缩量且承接恶化、同题材两只以上核心负反馈，或高位辨识度批量补跌：停止加仓。环境优先于个股价格与昨晚计划。</p></div>
-          <div><b>02 · 试错仓先于确认仓</b><p>9:30—9:35 只观察，9:35后首笔只买观察权；板块、核心地位与资金链确认后再加。T+1 当天不能卖，仓位本身就是止损。</p></div>
+          <div><b>02 · 试错仓先于确认仓</b><p>9:25核对预期差；9:30后仅在预定条件触发时进入判断，首笔只买观察权；板块、核心地位与资金链确认后再加。T+1 当天不能卖，仓位本身就是止损。</p></div>
           <div><b>03 · 异动空间不是买盘</b><p>距 100%/200% 红线还有空间，只代表“允许涨多少”，不代表市场愿意买。T-1 高度共识、节前与隔夜风险叠加时禁止满仓。</p></div>
           <div><b>04 · 修复必须验证传导链</b><p>新题材活口 → 辨识度龙头 → 老核心的尾盘回补，只能定义为局部修复；次日链条断裂，就不能当成全面回暖。</p></div>
           <div><b>05 · 禁止逻辑漂移</b><p>绕异动理由失效，这笔交易结束；不能临时改名为“龙回头/二波”给持仓续命。新模式必须重新开独立交易票。</p></div>
@@ -392,20 +427,21 @@ export function DashboardClient() {
         <p className="guardrail-bottom">执行顺序：先看赚钱效应与负反馈 → 再看身份和资金链 → 最后才看价格、异动余量与形态。</p>
       </section></details>
       {accountIssues.length > 0 && <div className="notice-row"><div><strong>账户风险闸门：暂不新增交易</strong><p>{accountIssues.join("；")}。请在“低吸雷达”核查后，于“今晚计划/盘中执行”落实风控。</p></div></div>}
-      <Tabs defaultValue="funnel" className="main-tabs" data-compact={!showLegacy}><TabsList className="tab-list"><TabsTrigger value="effect">赚钱效应</TabsTrigger><TabsTrigger value="funnel">低吸雷达</TabsTrigger><TabsTrigger value="plan">今晚计划</TabsTrigger><TabsTrigger value="opening">盘中执行</TabsTrigger>{showLegacy && <><TabsTrigger value="system">旧·策略风控</TabsTrigger><TabsTrigger value="review">旧·盘后复盘</TabsTrigger><TabsTrigger value="limit">旧·涨停图</TabsTrigger><TabsTrigger value="history">旧·历史统计</TabsTrigger></>}</TabsList>
+      <Tabs defaultValue="funnel" className="main-tabs" data-compact={!showLegacy}><TabsList className="tab-list"><TabsTrigger value="effect">赚钱效应</TabsTrigger><TabsTrigger value="funnel">盘前候选</TabsTrigger><TabsTrigger value="plan">今晚计划</TabsTrigger><TabsTrigger value="opening">盘中执行</TabsTrigger><TabsTrigger value="discipline">交易纪律</TabsTrigger>{showLegacy && <><TabsTrigger value="system">旧·策略风控</TabsTrigger><TabsTrigger value="review">旧·盘后复盘</TabsTrigger><TabsTrigger value="limit">旧·涨停图</TabsTrigger><TabsTrigger value="history">旧·历史统计</TabsTrigger></>}</TabsList>
         <TabsContent value="effect"><EffectObserver fields={f} onChange={updateField} recent={recentEffectDays} /></TabsContent>
-        <TabsContent value="funnel"><LowAbsorptionFunnel date={date} fields={f} onChange={updateField} summary={{ days: records.length, winRate: String(stats.winRate), pnl: stats.totalPnl }} onExport={exportCloud} onToggleLegacy={() => setShowLegacy((v) => !v)} legacyVisible={showLegacy} /></TabsContent>
+        <TabsContent value="funnel"><TradingPreparation key={date} date={date} fields={f} onChange={updateField} onCalendar={setCalendar}/><Button variant="outline" onClick={()=>setShowLegacy(v=>!v)}>{showLegacy?"收起旧版研究":"展开旧版雷达与完整复盘"}</Button>{showLegacy && <LowAbsorptionFunnel date={date} fields={f} onChange={updateField} summary={{ days: records.length, winRate: String(stats.winRate), pnl: stats.totalPnl }} onExport={exportCloud} onToggleLegacy={() => setShowLegacy((v) => !v)} legacyVisible={showLegacy} />}</TabsContent>
+        <TabsContent value="discipline"><TradingDiscipline book={book} onChange={updateBook} dirty={bookDirty} onSave={()=>void save()} conflict={Boolean(bookConflict)} onLoadRemote={()=>{if(bookConflict)loadBook(bookConflict);}} onOverwrite={()=>void save(false,true)} date={date} calendar={calendar} checks={payload.checks} onCheck={updateCheck} samples={readSamples(f.executionSamples)}/></TabsContent>
         <TabsContent value="system"><StrategyWorkbench fields={f} onChange={updateField} /></TabsContent>
         <TabsContent value="limit" className="panel-grid"><LimitReview date={date} /><Card className="span-6"><CardHeader><CardTitle>我的题材与竞争关系</CardTitle></CardHeader><CardContent><Textarea value={f.reviewThemes ?? ""} onChange={(e) => updateField("reviewThemes", e.target.value)} placeholder="主线、支线、板块竞争与证据；只存入私人复盘" /></CardContent></Card><Card className="span-6"><CardHeader><CardTitle>我的核心角色判断</CardTitle></CardHeader><CardContent><Textarea value={f.reviewRoles ?? ""} onChange={(e) => updateField("reviewRoles", e.target.value)} placeholder="龙头、中军、补涨、20cm 核心及证伪条件；由我确认" /></CardContent></Card></TabsContent>
-        <TabsContent value="plan" className="panel-grid">
+        <TabsContent value="plan" className="panel-grid"><p className="span-12 premium-source">执行以“盘前候选”冻结的名单为准；此处自由文字用于补充情景，不能增加名单外股票。</p>
           <Card className="span-4"><CardHeader><CardTitle>账户与周期</CardTitle></CardHeader><CardContent className="form-grid two"><Field label="比赛初始资金"><Input type="number" value={f.startEquity} onChange={(e) => updateField("startEquity", e.target.value)} /></Field><Field label="当前净值"><Input type="number" value={f.currentEquity} onChange={(e) => updateField("currentEquity", e.target.value)} /></Field><Field label="历史峰值"><Input type="number" value={f.peakEquity} onChange={(e) => updateField("peakEquity", e.target.value)} /></Field><Field label="当日盈亏额"><Input type="number" value={f.dailyPnl} onChange={(e) => updateField("dailyPnl", e.target.value)} /></Field><Field label="周期阶段"><Select value={f.cyclePhase} onValueChange={(v) => updateField("cyclePhase", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["混沌","启动试错","发育","成型","首次分歧","加速","高位震荡","退潮","冰点修复"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field><Field label="今日允许模式"><Select value={f.tradeMode} onValueChange={(v) => updateField("tradeMode", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["空仓观察","新龙卡位","新龙首次真分歧","主升龙头","老龙反核","老龙反抽","老龙二波","龙头属性补涨","20cm弹性","容量中军趋势"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field></CardContent></Card>
           <Card className="span-8"><CardHeader><CardTitle>盘面事实</CardTitle></CardHeader><CardContent className="form-grid two"><Field label="指数 / 成交额 / 增减"><Textarea value={f.marketFacts} onChange={(e) => updateField("marketFacts", e.target.value)} /></Field><Field label="涨跌停 / 炸板 / 溢价解读"><Textarea value={f.sentimentFacts} onChange={(e) => updateField("sentimentFacts", e.target.value)} /></Field><Field label="完整梯队"><Textarea value={f.ladder} onChange={(e) => updateField("ladder", e.target.value)} /></Field><Field label="竞争板块与资金流向"><Textarea value={f.rivalSectors} onChange={(e) => updateField("rivalSectors", e.target.value)} /></Field><Field label="监管 / 公告 / 催化事实"><Textarea value={f.regulatoryFacts} onChange={(e) => updateField("regulatoryFacts", e.target.value)} /></Field></CardContent></Card>
           <Card className="span-7"><CardHeader><CardTitle>每日三个预设候选 · 开盘择一执行</CardTitle></CardHeader><CardContent className="form-grid two"><Field label="候选 1 · 股票与代码"><Input value={f.candidate ?? ""} onChange={(e) => updateField("candidate", e.target.value)} /></Field><Field label="候选 2 · 股票与代码"><Input value={f.candidate2 ?? ""} onChange={(e) => updateField("candidate2", e.target.value)} /></Field><Field label="候选 3 · 股票与代码"><Input value={f.candidate3 ?? ""} onChange={(e) => updateField("candidate3", e.target.value)} /></Field><Field label="候选 2 预设买点"><Input value={f.allowedSetup2 ?? ""} onChange={(e) => updateField("allowedSetup2", e.target.value)} /></Field><Field label="候选 3 预设买点"><Input value={f.allowedSetup3 ?? ""} onChange={(e) => updateField("allowedSetup3", e.target.value)} /></Field><Field label="候选 2 证伪条件"><Input value={f.invalidations2 ?? ""} onChange={(e) => updateField("invalidations2", e.target.value)} /></Field><Field label="候选 3 证伪条件"><Input value={f.invalidations3 ?? ""} onChange={(e) => updateField("invalidations3", e.target.value)} /></Field><Field label="候选 1 角色"><Select value={f.candidateRole} onValueChange={(v) => updateField("candidateRole", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["未确定","同身位卡位者","发育期潜在龙","成型总龙","加速龙头","首次真分歧","老龙反核","老龙反抽","老龙二波","属性补涨","20cm弹性核心","容量中军"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field><Field label="候选 1 明日只允许的买点"><Input value={f.allowedSetup} onChange={(e) => updateField("allowedSetup", e.target.value)} /></Field><Field label="最大仓位 %"><Input type="number" min="0" max="40" value={f.maxPosition} onChange={(e) => updateField("maxPosition", e.target.value)} /></Field><Field label="成为核心的三条证据"><Textarea value={f.leaderEvidence} onChange={(e) => updateField("leaderEvidence", e.target.value)} /></Field><Field label="三条证伪条件"><Textarea value={f.invalidations} onChange={(e) => updateField("invalidations", e.target.value)} /></Field><p className="span-12 text-sm text-muted-foreground">三个候选连同各自买点和证伪条件跨设备同步。开盘只选择一只；同因子候选不算分散，全部证伪则空仓。</p></CardContent></Card>
           <Card className="span-5"><CardHeader><CardTitle>监管核对</CardTitle></CardHeader><CardContent className="form-grid"><Field label="标的与窗口"><Input value={f.abnormalStock || ""} onChange={(e) => updateField("abnormalStock", e.target.value)} placeholder="股票 + 规则窗口" /></Field><Field label="对应窗口起止日"><Input value={f.abnormalWindow || ""} onChange={(e) => updateField("abnormalWindow", e.target.value)} placeholder="10日 / 30日，注明交易所" /></Field><Field label="累计偏离值 %"><Input type="number" step="0.01" value={f.abnormalDeviation || ""} onChange={(e) => updateField("abnormalDeviation", e.target.value)} /></Field><Field label="距阈值百分点"><Input type="number" step="0.01" value={f.abnormalGap || ""} onChange={(e) => updateField("abnormalGap", e.target.value)} /></Field><Field label="盘后公告与续杯确认"><Textarea value={f.monitorAfterClose || ""} onChange={(e) => updateField("monitorAfterClose", e.target.value)} placeholder="来源、时间、是否解除；未知写待核" /></Field><p className="text-sm text-muted-foreground">偏离值是个股区间收益与对应指数区间收益之差，不能将剩余百分点直接当作股价空间；到期不等于自动解除。</p></CardContent></Card>
         </TabsContent>
-        <TabsContent value="opening" className="panel-grid"><HoldingExecution fields={f} onChange={updateField} /><YesterdayPremium /><Card className="span-12"><CardHeader><CardTitle>新增交易的30分钟时间锁 · 持仓退出全天执行</CardTitle></CardHeader><CardContent className="time-grid"><div><strong>9:30—9:35</strong><span>只观察</span><p>新增交易观察总龙承接、竞价兑现、梯队与竞争板块；持仓触发退出条件时不受观察窗口限制。</p></div><div><strong>9:35—9:50</strong><span>唯一执行窗</span><p>只执行三个预设候选中的一只；全部证伪则空仓。</p></div><div><strong>9:50—10:00</strong><span>锁单与退出</span><p>处理撤单并记录；10:00后不临时开新仓，已有持仓仍按退出预案处理。</p></div></CardContent></Card>
-          <Card className="span-7"><CardHeader><CardTitle>开盘事实与动作</CardTitle></CardHeader><CardContent className="form-grid two"><Field label="9:25竞价"><Textarea value={f.auction} onChange={(e) => updateField("auction", e.target.value)} /></Field><Field label="9:30—9:35总龙承接"><Textarea value={f.firstFive} onChange={(e) => updateField("firstFive", e.target.value)} /></Field><Field label="竞争者实际表现"><Textarea value={f.openingRivals} onChange={(e) => updateField("openingRivals", e.target.value)} /></Field><Field label="与昨晚预案偏差"><Textarea value={f.planDelta} onChange={(e) => updateField("planDelta", e.target.value)} /></Field><Field label="最终动作"><Select value={f.action} onValueChange={(v) => updateField("action", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["空仓","买入","持有","减仓","清仓"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field><Field label="实际仓位 %"><Input type="number" value={f.actualPosition} onChange={(e) => updateField("actualPosition", e.target.value)} /></Field><Field label="执行价格 / 原因 / 证据"><Textarea value={f.executionNote} onChange={(e) => updateField("executionNote", e.target.value)} /></Field></CardContent></Card>
-          <Card className={`span-5 gate-card ${gatePassed ? "pass" : "stop"}`}><CardHeader><CardTitle>下单授权闸门</CardTitle></CardHeader><CardContent className="check-list"><Field label="今日选择执行哪只候选"><Select value={f.executionCandidate || "none"} onValueChange={(v) => updateField("executionCandidate", v === "none" ? "" : v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">未选择 · 空仓</SelectItem>{candidates.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent></Select></Field>{gateChecks.map((item) => <CheckItem key={item[0]} item={item} checked={Boolean(payload.checks[item[0]])} onChange={(v) => updateCheck(item[0], v)} />)}<p className="liquidity-note">{liquidityIssues.length ? liquidityIssues.join("；") : "量能与退出卡已填写，继续核对其他条件。"}{f.ticketStock !== f.executionCandidate ? "；交易票标的必须与执行候选一致" : ""}</p><p className="liquidity-note">{certaintyIssues.length ? certaintyIssues.join("；") : "四要素与入场机制已核对，填写完整不代表已验证优势。"}</p><div className="gate-result">{gatePassed ? <><Check />允许执行：仅限 {f.executionCandidate}，仓位≤{f.maxPosition}%</> : <><AlertTriangle />默认不下单：条件尚未全部满足</>}</div></CardContent></Card>
+        <TabsContent value="opening" className="panel-grid"><HoldingExecution fields={f} onChange={updateField} /><YesterdayPremium /><PlannedExecution key={date} date={date} fields={f} onChange={updateField} book={book} calendar={calendar}/><ExecutionJournal date={date} fields={f} onChange={updateField}/>
+          <Card className="span-7"><CardHeader><CardTitle>开盘事实与动作</CardTitle></CardHeader><CardContent className="form-grid two"><Field label="9:25竞价"><Textarea value={f.auction} onChange={(e) => updateField("auction", e.target.value)} /></Field><Field label="开盘后总龙承接"><Textarea value={f.firstFive} onChange={(e) => updateField("firstFive", e.target.value)} /></Field><Field label="竞争者实际表现"><Textarea value={f.openingRivals} onChange={(e) => updateField("openingRivals", e.target.value)} /></Field><Field label="与昨晚预案偏差"><Textarea value={f.planDelta} onChange={(e) => updateField("planDelta", e.target.value)} /></Field><Field label="最终动作"><Select value={f.action} onValueChange={(v) => updateField("action", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["空仓","买入","持有","减仓","清仓"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field><Field label="实际仓位 %"><Input type="number" value={f.actualPosition} onChange={(e) => updateField("actualPosition", e.target.value)} /></Field><Field label="执行价格 / 原因 / 证据"><Textarea value={f.executionNote} onChange={(e) => updateField("executionNote", e.target.value)} /></Field></CardContent></Card>
+          <Card className={`span-5 gate-card ${gatePassed ? "pass" : "stop"}`}><CardHeader><CardTitle>下单授权闸门</CardTitle></CardHeader><CardContent className="check-list"><Field label="今日选择执行哪只候选"><Select value={f.executionCandidate || "none"} onValueChange={(v) => updateField("executionCandidate", v === "none" ? "" : v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">未选择 · 空仓</SelectItem>{candidates.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent></Select></Field>{gateChecks.map((item) => <CheckItem key={item[0]} item={item} checked={Boolean(payload.checks[item[0]])} onChange={(v) => updateCheck(item[0], v)} />)}<p className="liquidity-note">{liquidityIssues.length ? liquidityIssues.join("；") : "量能与退出卡已填写，继续核对其他条件。"}{f.ticketStock !== f.executionCandidate ? "；交易票标的必须与执行候选一致" : ""}</p><p className="liquidity-note">{certaintyIssues.length ? certaintyIssues.join("；") : "四要素与入场机制已核对，填写完整不代表已验证优势。"}</p><p className="liquidity-note">{[...workflowIssues,...customIssues].join("；")}</p><div className="gate-result">{gatePassed ? <><Check />允许执行：仅限 {f.executionCandidate}，仓位≤{f.maxPosition}%</> : <><AlertTriangle />默认不下单：条件尚未全部满足</>}</div></CardContent></Card>
         </TabsContent>
         <TabsContent value="review" className="panel-grid"><StrategyResearch fields={f} onChange={updateField} days={researchDays} /><ExitReview fields={f} onChange={updateField} /><CertaintyReview fields={f} onChange={updateField} />
           <Card className="span-6"><CardHeader><CardTitle>交易与纠偏</CardTitle></CardHeader><CardContent className="form-grid"><Field label="买卖理由与实际偏差"><Textarea value={f.tradeReview} onChange={(e) => updateField("tradeReview", e.target.value)} /></Field><Field label="如果重来，只改一个动作"><Textarea value={f.oneChange} onChange={(e) => updateField("oneChange", e.target.value)} /></Field><Field label="错误标签"><Select value={f.errorTag} onValueChange={(v) => updateField("errorTag", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["无","计划外交易","非预设候选","价格到位即满仓","环境否决后仍加仓","拥挤/节前风险漏算","逻辑漂移","追加速","退潮接力","后排套利","仓位超限","证伪后不撤","超时开仓","卖点拖延","同时间量能未核对","加速失败仍按成功预期持仓","因浮亏扩大风险预算","等待回本/回封锁仓","结果替代过程评价"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field><Field label="明日唯一纠偏"><Textarea value={f.correction} onChange={(e) => updateField("correction", e.target.value)} /></Field></CardContent></Card>

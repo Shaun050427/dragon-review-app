@@ -423,3 +423,31 @@ button, input, textarea { font: inherit; }
   .main-tabs[data-compact="true"] > .tab-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .main-tabs[data-compact="true"] > .tab-list button { min-width: 0; padding: 9px 4px; font-size: 13px; }
 }
+
+/* Premarket workflow and editable rules */
+.workflow { min-width:0; overflow-wrap:anywhere; }
+.workflow [data-slot="card-header"] > div:first-child { display:block; }
+.workflow .workflow-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+.workflow .discipline-rule { display:grid; gap:14px; padding:18px; border:1px solid var(--border); border-radius:12px; background:rgb(17 34 56 / 42%); min-width:0; }
+.workflow .classic-case { padding:14px; border:1px solid var(--border); border-radius:10px; }
+.workflow details[open] > summary { margin-bottom:14px; }
+.workflow summary { cursor:pointer; line-height:1.6; font-weight:650; }
+.workflow fieldset { min-width:0; border:0; padding:0; display:grid; gap:14px; }
+.workflow .drag-handle { border:1px solid var(--border); padding:7px 10px; border-radius:8px; cursor:grab; color:var(--primary); }
+.workflow a { color:var(--primary); text-decoration:underline; }
+.workflow select { width:100%; min-width:0; padding:9px 12px; border:1px solid var(--border); border-radius:8px; background:var(--background); }
+.workflow .table-wrap table { width:100%; border-collapse:collapse; min-width:680px; }
+.workflow th,.workflow td { text-align:left; padding:11px 12px; border-bottom:1px solid var(--border); vertical-align:top; }
+.workflow td small { display:block; color:var(--muted-foreground); }
+.workflow-queues { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.workflow-queues > div { padding:16px; border:1px solid var(--border); border-radius:12px; background:rgb(84 210 255 / 5%); }
+.workflow-queues b { color:var(--primary); }
+.workflow-queues p { font-size:14px; color:var(--muted-foreground); margin:8px 0; }
+.workflow-json { overflow:auto; white-space:pre-wrap; font-size:12px; max-height:300px; }
+@media(max-width:720px) {
+ .workflow-queues { grid-template-columns:1fr; }
+ .main-tabs[data-compact="true"] > .tab-list { grid-template-columns:repeat(5,minmax(0,1fr)); }
+ .main-tabs[data-compact="true"] > .tab-list button { font-size:12px; padding:9px 1px; }
+ .workflow .discipline-rule { padding:12px; }
+ .workflow [data-slot="card-header"],.workflow [data-slot="card-content"] { padding-left:14px; padding-right:14px; }
+}

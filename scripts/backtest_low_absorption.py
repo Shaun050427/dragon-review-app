@@ -72,7 +72,7 @@ def study(snapshot, days, cost_pct=.2):
                 if prior["lastBoard"] == facts["lastBoard"] and previous["touching"]:
                     continue
                 row = {"code": code, "signalDate": d, "cluster": code, "cycle": facts["lastBoard"], "leaderClass": facts["leaderClass"],
-                       "strategy": "S1候选" if touch["period"] <= 10 else "S2候选", "period": touch["period"],
+                       "strategy": "S0候选" if touch["period"] == 5 else "S1候选" if touch["period"] == 10 else "S2观察", "period": touch["period"],
                        "attempt": touch["touchCount"], "boardAge": facts["boardAge"], "activeAge": facts["activeAge"],
                        "environment": "未标注", "priority": facts["priority"], "forwardReturnPct": None, "netReturnPct": None,
                        "realizedR": None, "mfePct": None, "maePct": None, "overnightGapPct": None, "t1LowPct": None, "plannedRewardRisk": None,
