@@ -49,3 +49,9 @@ assert.deepEqual(certaintyPlanIssues(steps), []);
 assert.ok(certaintyPlanIssues({ ...steps, stepsWaitDays: "1.5" }).length);
 assert.ok(certaintyPlanIssues({ ...planned, entryMechanism: "断板反包", ticketStrategy: "CS-2 小碎步阳线潜伏" }).length);
 console.log("回撤与日内闸门、样本去重、收益归因、未知值与小碎步等待条件检查通过");
+
+const { executionAccountIssues } = await import('../lib/strategy-research.ts');
+const compactAccount={currentEquity:'100000',peakEquity:'100000',drawdownStopPct:'10',riskPerTradePct:'.5',dailyStopR:'2',realizedR:'0',maxPosition:'10'};
+assert.deepEqual(executionAccountIssues(compactAccount),[]);
+for(const patch of [{maxPosition:'0'},{maxPosition:'101'},{currentEquity:'89000'},{realizedR:'-2'},{drawdownStopPct:''}])assert.ok(executionAccountIssues({...compactAccount,...patch}).length);
+console.log('PASS: compact execution account checks retain drawdown, daily stop and position limits without retired planning fields');

@@ -512,3 +512,12 @@ button, input, textarea { font: inherit; }
  .main-tabs[data-compact="true"] > .tab-list button { font-size:11px; }
  .knowledge-board .history-head .workflow-actions { width:100%; }
 }
+
+.execution-account-settings { margin:14px 0; }
+.execution-account-settings > summary,.intraday-holdings > summary { cursor:pointer; padding:12px 14px; font-size:13px; color:var(--muted-foreground); border:1px solid var(--border); border-radius:10px; }
+.execution-account-settings[open] > summary,.intraday-holdings[open] > summary { margin-bottom:12px; }
+.execution-plan-strip { padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:rgb(84 210 255 / 5%); }
+.execution-plan-strip b { color:var(--primary); }
+.execution-plan-strip p { margin:4px 0; font-size:13px; }
+.execution-plan-strip small { color:var(--muted-foreground); }
+.intraday-execution textarea { min-height:68px; }

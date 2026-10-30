@@ -61,3 +61,11 @@ export function accountRisk(fields: Record<string, string>) {
   return { issues, drawdown, drawdownStopped, dailyStopped,
     remaining: equity !== null && peak !== null && peak >= equity && limit !== null && limit > 0 && limit <= 100 ? Math.max(0, equity - peak * (1 - limit / 100)) : null };
 }
+
+// Minimal execution account checks; independent of retired planning forms.
+export function executionAccountIssues(fields: Record<string,string>) {
+  const issues=accountRisk(fields).issues;
+  const position=finiteInput(fields.maxPosition);
+  if(position===null || position<=0 || position>100) issues.push("在盘前设置有效的最大单票仓位（0—100%）");
+  return issues;
+}

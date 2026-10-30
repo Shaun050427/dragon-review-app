@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { newId, type DisciplineBook } from "@/lib/trading-discipline";
 import { defaultKnowledge, moveKnowledge, type KnowledgeItem, type KnowledgeSection } from "@/lib/trading-knowledge";
 
-export function TradingKnowledge({book,onChange,dirty,onSave,conflict,onLoadRemote,onOverwrite,date,riskSummary,onRiskSummary}:{book:DisciplineBook;onChange:(book:DisciplineBook)=>void;dirty:boolean;onSave:()=>void;conflict:boolean;onLoadRemote:()=>void;onOverwrite:()=>void;date:string;riskSummary:string;onRiskSummary:(value:string)=>void}) {
+export function TradingKnowledge({book,onChange,dirty,onSave,conflict,onLoadRemote,onOverwrite,section,date,riskSummary,onRiskSummary}:{section:KnowledgeSection;book:DisciplineBook;onChange:(book:DisciplineBook)=>void;dirty:boolean;onSave:()=>void;conflict:boolean;onLoadRemote:()=>void;onOverwrite:()=>void;date:string;riskSummary:string;onRiskSummary:(value:string)=>void}) {
   const knowledge=book.knowledge??defaultKnowledge();
   const [editing,setEditing]=useState("");
   const [drag,setDrag]=useState<{section:KnowledgeSection;id:string}|null>(null);
@@ -21,12 +21,11 @@ export function TradingKnowledge({book,onChange,dirty,onSave,conflict,onLoadRemo
       {active?<Textarea autoFocus className="knowledge-editor" aria-label={section==="notes"?"知识点内容":"交易风险内容"} value={item.content} onChange={event=>{update(section,knowledge[section].map(value=>value.id===item.id?{...value,content:event.target.value}:value));}}/>:<div className="knowledge-copy"><strong>{title||"待补充"}</strong>{lines.length>0&&<p>{lines.join("\n")}</p>}</div>}
     </article>;
   })}{!knowledge[section].length&&<p className="premium-source">暂无内容，点击增加即可补充。</p>}</div>;
-  return <div className="workflow knowledge-board space-y-4"><Card><CardHeader className="history-head"><div><CardTitle>操盘小知识</CardTitle><p>我的经验笔记 · 待验证。紧凑展示，点击编辑，拖拽排序。</p></div><div className="workflow-actions"><Button variant="outline" onClick={()=>add("notes")}>增加知识点</Button><Button onClick={onSave}>{dirty?"保存知识修改":"知识已保存"}</Button></div></CardHeader><CardContent className="space-y-4">
-    {conflict&&<div className="conflict-row"><div><strong>另一台设备更新了纪律或知识</strong><p>本页修改仍保留，请选择版本。</p></div><Button variant="outline" onClick={()=>{setEditing("");onLoadRemote();}}>载入远端知识</Button><Button variant="destructive" onClick={onOverwrite}>提交本页知识版本</Button></div>}
+  const risk=section==="risks";
+  return <div className="workflow knowledge-board space-y-4"><Card><CardHeader className="history-head"><div><CardTitle>{risk?"交易风险":"操盘小知识"}</CardTitle><p>{risk?"财报、外围事件与跨市场风险提示；可自行编辑，不是实时新闻或行情。":"我的经验笔记 · 待验证。紧凑展示，点击编辑，拖拽排序。"}</p></div><div className="workflow-actions"><Button variant="outline" onClick={()=>add(section)}>{risk?"增加风险点":"增加知识点"}</Button><Button onClick={onSave}>{dirty?(risk?"保存风险修改":"保存知识修改"):(risk?"风险已保存":"知识已保存")}</Button></div></CardHeader><CardContent className="space-y-4">
+    {conflict&&<div className="conflict-row"><div><strong>另一台设备更新了内容</strong><p>本页修改仍保留，请选择版本。</p></div><Button variant="outline" onClick={()=>{setEditing("");onLoadRemote();}}>{risk?"载入远端风险":"载入远端知识"}</Button><Button variant="destructive" onClick={onOverwrite}>{risk?"提交本页风险版本":"提交本页知识版本"}</Button></div>}
     {deleted&&<Button size="sm" variant="outline" onClick={()=>{const items=[...knowledge[deleted.section]];items.splice(deleted.index,0,deleted.item);update(deleted.section,items);setDeleted(null);}}>撤销上次删除</Button>}
-    {renderSection("notes")}
-  </CardContent></Card><Card><CardHeader className="history-head"><div><CardTitle>交易风险</CardTitle><p>财报、外围事件与跨市场风险提示。此处是可编辑观察清单，不是实时新闻或行情。</p></div><Button variant="outline" onClick={()=>add("risks")}>增加风险点</Button></CardHeader><CardContent className="space-y-4">
-    {renderSection("risks")}
-    <details className="daily-risk-summary"><summary>{date} · 当日风险汇总</summary><label className="field"><span>事件与时间 → 信息来源 → 受影响持仓/候选 → 应对或放弃条件</span><Textarea aria-label="当日风险汇总" value={riskSummary} onChange={event=>onRiskSummary(event.target.value)} placeholder="由我补充已核实的事实、来源和应对；按交易日保存。"/></label></details>
+    {renderSection(section)}
+    {risk&&<details className="daily-risk-summary"><summary>{date} · 当日风险汇总</summary><label className="field"><span>事件与时间 → 信息来源 → 受影响持仓/候选 → 应对或放弃条件</span><Textarea aria-label="当日风险汇总" value={riskSummary} onChange={event=>onRiskSummary(event.target.value)} placeholder="由我补充已核实的事实、来源和应对；按交易日保存。"/></label></details>}
   </CardContent></Card></div>;
 }

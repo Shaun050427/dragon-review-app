@@ -67,9 +67,9 @@ export function HoldingExecution(props: Props) {
     "原理由失效": "按失效预案处理可卖仓位；不能改成长期持有续命。",
     "风险上限触发": "按风险退出预案处理可卖仓位，不以仍可能反弹取消执行。",
   };
-  return <Card className="liquidity-card span-12"><CardHeader><CardTitle>全天持仓处理 · 持有需要证据</CardTitle><p className="liquidity-note">新增交易遵守原时间锁；持仓风险处理贯穿交易时段。当天新买普通A股受T+1约束，触发信号不保证能够立即成交。</p></CardHeader><CardContent className="liquidity-content">
-    <p className="liquidity-summary">当前交易票：{props.fields.ticketStock || "标的未填写"} · {props.fields.exitThesis || "交易类型未选择"}。对应兑现与证伪条件见“四大战法”的唯一交易票。</p>
-    <div className="form-grid two">{[["ticketExit", "预期兑现"], ["ticketInvalidation", "原理由证伪"], ["exitRiskLimit", "风险上限"], ["exitRemainder", "剩余仓位退出"]].map(([key, label]) => <div className="field" key={key}><span>{label}</span><p className="liquidity-summary">{props.fields[key] || "待填写退出卡"}</p></div>)}</div>
+  return <Card className="liquidity-card span-12"><CardHeader><CardTitle>全天持仓处理 · 持有需要证据</CardTitle><p className="liquidity-note">新增交易以盘前冻结名单为准；持仓风险处理贯穿交易时段。当天新买普通A股受T+1约束，触发信号不保证能够立即成交。</p></CardHeader><CardContent className="liquidity-content">
+    <Fields {...props} specs={[{key:"ticketStock",label:"持仓标的"}]} />
+    <Fields {...props} specs={[["ticketExit","预期兑现"],["ticketInvalidation","原理由证伪"],["exitRiskLimit","风险上限"],["exitRemainder","剩余仓位退出"]].map(([key,label])=>({key,label}))} />
     <div className="form-grid two"><Choice {...props} name="holdingStage" label="当前持仓状态（手动评估）" options={Object.keys(messages)} /><Choice {...props} name="holdingAction" label="此次处理记录" options={["未记录", "继续持有", "减仓", "退出可卖仓位", "T+1 / 无承接暂无法退出"]} /></div>
     <p className={`liquidity-summary ${["原理由失效", "风险上限触发"].includes(stage) ? "liquidity-danger" : ""}`} role="status">{messages[stage]}</p>
     {["原理由失效", "风险上限触发"].includes(stage) && props.fields.holdingAction === "继续持有" && <p className="liquidity-summary liquidity-danger">状态与动作冲突：已记录失效 / 风险触发却继续持有，请复盘执行原因；无法卖出应如实记录交易限制。</p>}
