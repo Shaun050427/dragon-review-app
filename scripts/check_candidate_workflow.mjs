@@ -50,3 +50,10 @@ const empty={...defaultBook(),rules:[]};assert.ok(readBook(empty));assert.equal(
 const withCase=defaultBook();withCase.rules[0].cases=[{id:'case',title:'case',date:'',stock:'',pattern:'',facts:'',planned:'',actual:'',lesson:'',sourceUrl:'',imageUrl:''}];const moved=moveRule(withCase,withCase.rules[0].id,withCase.rules[1].id);assert.equal(moved.rules[1].cases[0].id,'case');
 assert.equal(sameBook(empty,{...empty,updatedAt:'later'}),true);assert.equal(safeCaseUrl('javascript:alert(1)'),null);assert.equal(safeCaseUrl('https://example.com/'),'https://example.com/');
 console.log('PASS: finite five-session pools, no future data, frozen timing, execution gates, repair limits, live/paper deviations, rule/case integrity');
+
+const { defaultKnowledge, validKnowledge, moveKnowledge } = await import('../lib/trading-knowledge.ts');
+const knowledge=defaultKnowledge();assert.equal(knowledge.notes.length,3);assert.equal(knowledge.risks.length,7);assert.ok(validKnowledge(knowledge));
+assert.ok(readBook({...defaultBook(),knowledge}));assert.ok(readBook({...defaultBook(),knowledge:{notes:[],risks:[]}}));
+for(const malformed of [null,{notes:[null],risks:[]},{notes:[{id:'a',content:'x'},{id:'a',content:'y'}],risks:[]},{notes:[],risks:[{id:'x',content:4}]}]){assert.equal(validKnowledge(malformed),false);assert.equal(readBook({...defaultBook(),knowledge:malformed}),null);}
+const movedNotes=moveKnowledge(knowledge,'notes',knowledge.notes[0].id,knowledge.notes[2].id);assert.equal(movedNotes.notes[2].id,knowledge.notes[0].id);assert.deepEqual(movedNotes.risks,knowledge.risks);assert.equal(knowledge.notes[0].id,'tech-rebound');
+console.log('PASS: knowledge seeds, legacy book compatibility, duplicate/malformed rejection, isolated reorder and empty-list preservation');

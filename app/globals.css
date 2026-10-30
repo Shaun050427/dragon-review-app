@@ -446,7 +446,7 @@ button, input, textarea { font: inherit; }
 .workflow-json { overflow:auto; white-space:pre-wrap; font-size:12px; max-height:300px; }
 @media(max-width:720px) {
  .workflow-queues { grid-template-columns:1fr; }
- .main-tabs[data-compact="true"] > .tab-list { grid-template-columns:repeat(5,minmax(0,1fr)); }
+ .main-tabs[data-compact="true"] > .tab-list { grid-template-columns:repeat(6,minmax(0,1fr)); }
  .main-tabs[data-compact="true"] > .tab-list button { font-size:12px; padding:9px 1px; }
  .workflow .discipline-rule { padding:12px; }
  .workflow [data-slot="card-header"],.workflow [data-slot="card-content"] { padding-left:14px; padding-right:14px; }
@@ -485,4 +485,30 @@ button, input, textarea { font: inherit; }
  .discipline-case-links .case-preview { display:none; }
  .discipline-case-panel { grid-column:2/-1; }
  .discipline-board .history-head .workflow-actions { width:100%; }
+}
+
+/* Dense, editable knowledge cards with independent experience and risk queues. */
+.knowledge-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.knowledge-item { min-width:0; padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:rgb(17 34 56 / 42%); }
+.knowledge-toolbar { display:flex; justify-content:space-between; gap:6px; margin-bottom:7px; align-items:center; }
+.knowledge-toolbar > div { display:flex; gap:3px; }
+.knowledge-toolbar button { padding:2px 5px; border-radius:4px; font-size:12px; color:var(--muted-foreground); cursor:pointer; }
+.knowledge-toolbar button:hover:not(:disabled) { color:var(--primary); background:rgb(84 210 255 / 8%); }
+.knowledge-toolbar button:disabled { opacity:.3; cursor:default; }
+.knowledge-toolbar .knowledge-drag { cursor:grab; color:var(--primary); font-size:17px; padding-left:0; }
+.knowledge-drag small { font-size:11px; color:var(--muted-foreground); }
+.knowledge-copy { font-size:13px; line-height:1.6; white-space:pre-wrap; overflow-wrap:anywhere; }
+.knowledge-copy strong { font-size:14px; font-weight:650; }
+.knowledge-copy p { margin:4px 0 0; color:var(--muted-foreground); }
+.knowledge-editor { min-height:135px; font-size:13px; line-height:1.6; }
+.daily-risk-summary { border-top:1px solid var(--border); padding-top:12px; }
+.daily-risk-summary > summary { font-size:13px; color:var(--muted-foreground); }
+.daily-risk-summary textarea { min-height:100px; }
+.knowledge-board .history-head .workflow-actions { flex-wrap:wrap; }
+@media(max-width:1100px) { .knowledge-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:720px) {
+ .knowledge-grid { grid-template-columns:1fr; }
+ .knowledge-item { padding:10px 12px; }
+ .main-tabs[data-compact="true"] > .tab-list button { font-size:11px; }
+ .knowledge-board .history-head .workflow-actions { width:100%; }
 }

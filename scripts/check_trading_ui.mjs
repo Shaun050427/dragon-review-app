@@ -70,5 +70,25 @@ try {
  await click(button('载入远端纪律'));assert.ok(w.document.querySelector('.discipline-content').textContent.includes('远端新版本'));
  // Edits made during a network save must remain dirty and be saved next.
  await click(buttons('编辑纪律')[0]);await input(editor(),'第一稿');let release;holdWrite=new Promise(r=>release=r);await act(async()=>{button('保存纪律修改').click();await new Promise(r=>setTimeout(r,10));});await input(editor(),'保存期间第二稿');await act(async()=>release());await settle();assert.ok(button('保存纪律修改'));assert.equal(doc.disciplineBook.rules[0].title,'第一稿');await click(button('保存纪律修改'));assert.equal(doc.disciplineBook.rules[0].title,'保存期间第二稿');
- console.log('PASS: Dashboard rule CRUD, native drag and case integrity, cross-date book, synthetic two-board list, first-signal dedup, unknown/root/date preservation, remote conflicts and in-flight edits');
+ // Knowledge shares durable book storage, with independently ordered risk notes.
+ await click(button('操盘知识'));assert.equal(w.document.querySelectorAll('[role="tab"]').length,6);
+ const noteGrid=()=>w.document.querySelector('.knowledge-grid[data-section="notes"]'),riskGrid=()=>w.document.querySelector('.knowledge-grid[data-section="risks"]');
+ assert.equal(noteGrid().children.length,3);assert.equal(riskGrid().children.length,7);
+ assert.equal(w.document.querySelectorAll('.knowledge-grid textarea').length,0);
+ assert.ok(noteGrid().textContent.includes('七成可用资金'));assert.ok(noteGrid().textContent.includes('哈药、精华'));
+ await click(button('增加知识点'));await input(w.document.querySelector('textarea[aria-label="知识点内容"]'),'自定义知识\n第二行内容');assert.equal(noteGrid().children.length,4);
+ const knowledgeTransfer={value:'',getData(){return this.value;},setData(_k,v){this.value=v;}};
+ await act(async()=>{const start=new w.Event('dragstart',{bubbles:true});Object.defineProperty(start,'dataTransfer',{value:knowledgeTransfer});noteGrid().querySelectorAll('.knowledge-drag')[3].dispatchEvent(start);const drop=new w.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(drop,'dataTransfer',{value:knowledgeTransfer});noteGrid().children[0].dispatchEvent(drop);});
+ await click(button('完成编辑'));assert.ok(noteGrid().children[0].textContent.includes('自定义知识'));
+ const priorRisk=riskGrid().children[0].textContent;
+ await act(async()=>{const drop=new w.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(drop,'dataTransfer',{value:knowledgeTransfer});riskGrid().children[0].dispatchEvent(drop);});assert.equal(riskGrid().children[0].textContent,priorRisk); // A drag cannot move an experience into the risk queue.
+ await click(button('保存知识修改'));assert.equal(doc.disciplineBook.knowledge.notes[0].content,'自定义知识\n第二行内容');assert.equal(doc.disciplineBook.knowledge.risks.length,7);assert.equal(doc.disciplineBook.rules[0].title,'保存期间第二稿');
+ await click([...noteGrid().querySelectorAll('button')].find(b=>b.textContent==='删除'));assert.equal(noteGrid().children.length,3);await click(button('撤销上次删除'));assert.equal(noteGrid().children.length,4);
+ await input(w.document.querySelector('textarea[aria-label="当日风险汇总"]'),'测试日期的已核实事件与应对');await click(button('立即提交'));assert.equal(doc.records['2026-10-28'].payload.fields.knowledgeRiskSummary,'测试日期的已核实事件与应对');
+ await input(w.document.querySelector('#trade-date'),'2026-10-27');assert.equal(noteGrid().children.length,4);assert.equal(w.document.querySelector('textarea[aria-label="当日风险汇总"]').value,'');await input(w.document.querySelector('#trade-date'),'2026-10-28');assert.equal(w.document.querySelector('textarea[aria-label="当日风险汇总"]').value,'测试日期的已核实事件与应对');
+ await click([...noteGrid().querySelectorAll('button')].find(b=>b.textContent==='编辑'));await input(w.document.querySelector('textarea[aria-label="知识点内容"]'),'本地未提交知识');
+ const remoteKnowledge=structuredClone(doc.disciplineBook);remoteKnowledge.knowledge.notes[0].content='其他设备的知识';doc.disciplineBook=remoteKnowledge;sha='remote-knowledge';await act(async()=>{await intervals.find(x=>x.ms===30000).fn();});await settle();assert.ok(button('载入远端知识'));assert.equal(w.document.querySelector('textarea[aria-label="知识点内容"]').value,'本地未提交知识');await click(button('载入远端知识'));assert.ok(noteGrid().textContent.includes('其他设备的知识'));
+ for(let i=0;i<4;i++)await click([...noteGrid().querySelectorAll('button')].find(b=>b.textContent==='删除'));
+ await click(button('保存知识修改'));assert.deepEqual(doc.disciplineBook.knowledge.notes,[]);await click(button('交易纪律'));await click(button('操盘知识'));assert.equal(noteGrid().querySelectorAll('.knowledge-item').length,0);assert.equal(riskGrid().children.length,7);assert.equal(doc.unknownRoot.keep,true);
+ console.log('PASS: Dashboard rule CRUD, native drag and case integrity, cross-date book, synthetic two-board list, first-signal dedup, unknown/root/date preservation, remote conflicts and in-flight edits; dense knowledge CRUD, isolated drag queues, cross-day risk summary and empty-list persistence');
 } finally {await act(async()=>node.unmount());w.close();globalThis.Date=RealDate;}

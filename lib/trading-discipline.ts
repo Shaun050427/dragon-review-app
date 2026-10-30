@@ -1,6 +1,6 @@
 export type ClassicCase = { id: string; title: string; date: string; stock: string; pattern: string; facts: string; planned: string; actual: string; lesson: string; sourceUrl: string; imageUrl: string };
 export type Discipline = { id: string; title: string; detail: string; required: boolean; cases: ClassicCase[] };
-export type DisciplineBook = { schemaVersion: 1; updatedAt: string; rules: Discipline[]; repair: { enabled: boolean; startDate: string; riskCap: string; positionCap: string; maxNewPositions: string } };
+export type DisciplineBook = { schemaVersion: 1; updatedAt: string; rules: Discipline[]; knowledge?: import("./trading-knowledge").KnowledgeBook; repair: { enabled: boolean; startDate: string; riskCap: string; positionCap: string; maxNewPositions: string } };
 export const newId = () => crypto.randomUUID();
 export function defaultBook(): DisciplineBook {
   return { schemaVersion: 1, updatedAt: "", rules: [
@@ -19,6 +19,7 @@ export function readBook(v: unknown): DisciplineBook | null {
   const keys = ["title", "date", "stock", "pattern", "facts", "planned", "actual", "lesson", "sourceUrl", "imageUrl"] as const;
   if (b.schemaVersion !== 1 || typeof b.updatedAt !== "string" || !Array.isArray(b.rules) || !b.repair || typeof b.repair.enabled !== "boolean" || ![b.repair.startDate,b.repair.riskCap,b.repair.positionCap,b.repair.maxNewPositions].every(x => typeof x === "string")) return null;
   if (!b.rules.every(r => r && typeof r.id === "string" && r.id && typeof r.title === "string" && typeof r.detail === "string" && typeof r.required === "boolean" && Array.isArray(r.cases) && r.cases.every(c => c && typeof c.id === "string" && c.id && keys.every(k => typeof c[k] === "string")) && new Set(r.cases.map(c => c.id)).size === r.cases.length) || new Set(b.rules.map(r => r.id)).size !== b.rules.length) return null;
+  if (b.knowledge !== undefined && (!b.knowledge || ![b.knowledge.notes,b.knowledge.risks].every(items => Array.isArray(items) && items.every(item => item && typeof item.id === "string" && item.id.trim() && typeof item.content === "string") && new Set(items.map(item => item.id)).size === items.length))) return null;
   return b;
 }
 export function sameBook(a: DisciplineBook, b: DisciplineBook) { return JSON.stringify({ ...a, updatedAt: "" }) === JSON.stringify({ ...b, updatedAt: "" }); }
