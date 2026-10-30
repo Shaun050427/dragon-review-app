@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, BookOpen, Check, CloudOff, Download, GitBranch, History, LogOut, RefreshCw, RotateCcw, Save, Upload } from "lucide-react";
+import { AlertTriangle, BookOpen, CloudOff, Download, GitBranch, History, LogOut, RefreshCw, RotateCcw, Save, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,23 +12,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { listRevisions, pullDocument, pushDocument, verifyRepository, type GitHubConfig, type GitHubRevision, type ReviewDocument } from "@/lib/github-store";
-import { YesterdayPremium } from "@/app/yesterday-premium";
 import { LowAbsorptionFunnel } from "@/app/low-absorption-funnel";
 import { LimitReview } from "@/app/limit-review";
 import { EffectObserver } from "@/app/effect-observer";
 import { StrategyWorkbench } from "@/app/strategy-workbench";
 import { ExitReview, HoldingExecution } from "@/app/liquidity-discipline";
-import { liquidityPlanIssues } from "@/lib/liquidity-plan";
-import { certaintyPlanIssues } from "@/lib/trade-certainty";
 import { CertaintyReview } from "@/app/trade-certainty";
 import { StrategyResearch } from "@/app/strategy-research";
 import { accountRisk } from "@/lib/strategy-research";
 import { TradingDiscipline } from "@/app/trading-discipline";
 import { TradingKnowledge } from "@/app/trading-knowledge";
 import { TradingPreparation } from "@/app/trading-preparation";
-import { ExecutionJournal, PlannedExecution } from "@/app/planned-execution";
+import { ExecutionAccountSettings, ExecutionJournal, PlannedExecution } from "@/app/planned-execution";
 import { defaultBook, readBook, sameBook, type DisciplineBook } from "@/lib/trading-discipline";
-import { chinaDate, executionIssues, readSamples } from "@/lib/candidate-workflow";
+import { chinaDate, readPlan, readSamples } from "@/lib/candidate-workflow";
 import type { TradingCalendar } from "@/lib/low-absorption";
 
 type Payload = { fields: Record<string, string>; checks: Record<string, boolean> };
@@ -71,22 +68,6 @@ const defaultPayload = (): Payload => ({
   },
   checks: {},
 });
-
-const gateChecks = [
-  ["gate_planned", "所选股票是昨晚写下的三个候选之一，且买点已写清"],
-  ["gate_phase", "周期阶段仍允许该模式"],
-  ["gate_environment", "大盘量能、涨跌家数及同题材/同模式核心未触发环境否决"],
-  ["gate_liquidity", "已核对同时间量能、承接证据，并完成交易票与退出卡"],
-  ["gate_certainty", "四要素与入场机制已有支持证据，可执行性及低吸条件链（如适用）已核对"],
-  ["gate_leader", "开盘后地位增强，而非只有个股高开"],
-  ["gate_sector", "中军、梯队或新增首板至少一项确认"],
-  ["gate_profit_effect", "同模式仍有赚钱效应；没有把监管空间误当成新增买盘"],
-  ["gate_regulatory", "若逻辑依赖监管解除或异动余量，状态与算法已核对，未用主观猜测替代"],
-  ["gate_probe", "首笔只是试错仓；只有环境与资金链确认后才允许增加仓位"],
-  ["gate_crowding", "已评估共识拥挤、节前/隔夜和 T+1 无法止损风险"],
-  ["gate_risk", "未触发任何证伪条件"],
-  ["gate_size", "仓位不超上限，接受隔夜最坏情景"],
-];
 
 const disciplineChecks = [
   ["disc_plan", "昨晚有书面预案"], ["disc_one", "只在三个预设候选里选一只执行"],
@@ -136,6 +117,7 @@ export function DashboardClient() {
   const [revisions, setRevisions] = useState<GitHubRevision[]>([]);
   const [revisionBusy, setRevisionBusy] = useState(false);
   const [showLegacy, setShowLegacy] = useState(false);
+  const [activeTab,setActiveTab] = useState("funnel");
   const dirtyRef = useRef(false);
   const dateRef = useRef(date);
   const revisionRef = useRef(revision);
@@ -393,15 +375,9 @@ export function DashboardClient() {
   const current = Number(f.currentEquity) || 100000;
   const start = Number(f.startEquity) || 100000;
   const peak = Math.max(Number(f.peakEquity) || start, current);
-  const candidates = [...new Set([f.candidate, f.candidate2, f.candidate3].filter(Boolean))];
-  const selectedIndex = [f.candidate, f.candidate2, f.candidate3].findIndex((name) => name && name === f.executionCandidate);
-  const selectedSetup = [f.allowedSetup, f.allowedSetup2, f.allowedSetup3][selectedIndex];
-  const selectedInvalidations = [f.invalidations, f.invalidations2, f.invalidations3][selectedIndex];
-  const liquidityIssues = liquidityPlanIssues(f);
-  const certaintyIssues = certaintyPlanIssues(f);
   const accountIssues = accountRisk(f).issues;
-  const workflowIssues = executionIssues(date,f,book,calendar);
-  const gatePassed = workflowIssues.length === 0 && gateChecks.every(([key]) => payload.checks[key]) && accountIssues.length === 0 && liquidityIssues.length === 0 && certaintyIssues.length === 0 && f.ticketStock === f.executionCandidate && f.tradeMode !== "空仓观察" && selectedIndex >= 0 && Boolean(selectedSetup?.trim()) && Boolean(selectedInvalidations?.trim()) && Number(f.maxPosition) > 0;
+  const frozenPlan = readPlan(f.candidatePlan);
+  const executionStrategy = frozenPlan?.executionDate === date ? frozenPlan.picks.find(p=>p.code===f.plannedCode)?.strategy : undefined;
 
   if (!connected) {
     const set = (key: keyof typeof setup, value: string | boolean) => setSetup((current) => ({ ...current, [key]: value }));
@@ -414,7 +390,7 @@ export function DashboardClient() {
       <div className="daybar"><div><label htmlFor="trade-date">交易日</label><Input id="trade-date" type="date" value={date} onChange={(e) => chooseDate(e.target.value)} /></div><div className="day-actions"><span className={dirty ? "dirty" : "saved"}>{dirty || bookDirty ? "修改将在停止输入6秒后提交" : `GitHub 版本 ${revision || "新建"}`}</span><Button onClick={() => void save()}><Save />立即提交</Button></div></div>
       {legacyCount > 0 && <div className="notice-row"><div><strong>检测到本设备有 {legacyCount} 个旧版记录</strong><p>可以一次迁移到 GitHub；已有同日期记录不会被覆盖。</p></div><Button onClick={() => void migrateLegacy()} disabled={migrating}><Upload />{migrating ? "正在迁移" : "迁移旧记录"}</Button></div>}
       {conflict && <div className="conflict-row"><div><strong>保存前发现另一台设备已更新 {date}</strong><p>系统已经拉取最新版。你可以载入对方版本，或把本页作为一个新提交覆盖该交易日；其他日期不会受影响。</p></div><div><Button variant="outline" onClick={() => applyRecord(conflict, date)}>载入 GitHub 最新版</Button><Button variant="destructive" onClick={() => void save(true)}>提交本页版本</Button></div></div>}
-      <div className="metrics"><div><span>当前净值</span><strong>{money(current)}</strong></div><div><span>累计收益</span><strong className={current >= start ? "up" : "down"}>{((current / start - 1) * 100).toFixed(2)}%</strong></div><div><span>距峰值回撤</span><strong className="down">{((current / peak - 1) * 100).toFixed(2)}%</strong></div><div><span>今日模式</span><strong>{f.ticketStrategy || f.tradeMode}</strong></div><div><span>今日已实现 R</span><strong className={Number(f.realizedR) >= 0 ? "up" : "down"}>{Number(f.realizedR || 0).toFixed(1)}R</strong></div></div>
+      <div className="metrics"><div><span>当前净值</span><strong>{money(current)}</strong></div><div><span>累计收益</span><strong className={current >= start ? "up" : "down"}>{((current / start - 1) * 100).toFixed(2)}%</strong></div><div><span>距峰值回撤</span><strong className="down">{((current / peak - 1) * 100).toFixed(2)}%</strong></div><div><span>今日模式</span><strong>{executionStrategy || "未选择"}</strong></div><div><span>今日已实现 R</span><strong className={Number(f.realizedR) >= 0 ? "up" : "down"}>{Number(f.realizedR || 0).toFixed(1)}R</strong></div></div>
       <details><summary>按需查看：既有交易护栏与复盘原则</summary><section className="jinjian-guardrail" aria-label="金健米业复盘形成的交易护栏">
         <div className="guardrail-heading"><AlertTriangle /><div><span>金健米业复盘 · 执行护栏</span><strong>价格到了，但环境没到，就不是买点。</strong></div></div>
         <div className="guardrail-rules">
@@ -426,24 +402,16 @@ export function DashboardClient() {
         </div>
         <p className="guardrail-bottom">执行顺序：先看赚钱效应与负反馈 → 再看身份和资金链 → 最后才看价格、异动余量与形态。</p>
       </section></details>
-      {accountIssues.length > 0 && <div className="notice-row"><div><strong>账户风险闸门：暂不新增交易</strong><p>{accountIssues.join("；")}。请在“低吸雷达”核查后，于“今晚计划/盘中执行”落实风控。</p></div></div>}
-      <Tabs defaultValue="funnel" className="main-tabs" data-compact={!showLegacy}><TabsList className="tab-list"><TabsTrigger value="effect">赚钱效应</TabsTrigger><TabsTrigger value="funnel">盘前候选</TabsTrigger><TabsTrigger value="plan">今晚计划</TabsTrigger><TabsTrigger value="opening">盘中执行</TabsTrigger><TabsTrigger value="discipline">交易纪律</TabsTrigger><TabsTrigger value="knowledge">操盘知识</TabsTrigger>{showLegacy && <><TabsTrigger value="system">旧·策略风控</TabsTrigger><TabsTrigger value="review">旧·盘后复盘</TabsTrigger><TabsTrigger value="limit">旧·涨停图</TabsTrigger><TabsTrigger value="history">旧·历史统计</TabsTrigger></>}</TabsList>
+      {accountIssues.length > 0 && <div className="notice-row"><div><strong>账户风险闸门：暂不新增交易</strong><p>{accountIssues.join("；")}。请在“盘前候选”的“账户与风险设置”中核查。</p></div></div>}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="main-tabs" data-compact={!showLegacy}><TabsList className="tab-list"><TabsTrigger value="effect">赚钱效应</TabsTrigger><TabsTrigger value="funnel">盘前候选</TabsTrigger><TabsTrigger value="opening">盘中执行</TabsTrigger><TabsTrigger value="discipline">交易纪律</TabsTrigger><TabsTrigger value="knowledge">操盘知识</TabsTrigger><TabsTrigger value="risk">交易风险</TabsTrigger>{showLegacy && <><TabsTrigger value="system">旧·策略风控</TabsTrigger><TabsTrigger value="review">旧·盘后复盘</TabsTrigger><TabsTrigger value="limit">旧·涨停图</TabsTrigger><TabsTrigger value="history">旧·历史统计</TabsTrigger></>}</TabsList>
         <TabsContent value="effect"><EffectObserver fields={f} onChange={updateField} recent={recentEffectDays} /></TabsContent>
-        <TabsContent value="funnel"><TradingPreparation key={date} date={date} fields={f} onChange={updateField} onCalendar={setCalendar}/><Button variant="outline" onClick={()=>setShowLegacy(v=>!v)}>{showLegacy?"收起旧版研究":"展开旧版雷达与完整复盘"}</Button>{showLegacy && <LowAbsorptionFunnel date={date} fields={f} onChange={updateField} summary={{ days: records.length, winRate: String(stats.winRate), pnl: stats.totalPnl }} onExport={exportCloud} onToggleLegacy={() => setShowLegacy((v) => !v)} legacyVisible={showLegacy} />}</TabsContent>
+        <TabsContent value="funnel"><TradingPreparation key={date} date={date} fields={f} onChange={updateField} onCalendar={setCalendar}/><ExecutionAccountSettings fields={f} onChange={updateField}/><Button variant="outline" onClick={()=>setShowLegacy(v=>!v)}>{showLegacy?"收起旧版研究":"展开旧版雷达与完整复盘"}</Button>{showLegacy && <LowAbsorptionFunnel date={date} fields={f} onChange={updateField} summary={{ days: records.length, winRate: String(stats.winRate), pnl: stats.totalPnl }} onExport={exportCloud} onToggleLegacy={() => setShowLegacy((v) => !v)} legacyVisible={showLegacy} />}</TabsContent>
         <TabsContent value="discipline"><TradingDiscipline book={book} onChange={updateBook} dirty={bookDirty} onSave={()=>void save()} conflict={Boolean(bookConflict)} onLoadRemote={()=>{if(bookConflict)loadBook(bookConflict);}} onOverwrite={()=>void save(false,true)} date={date} calendar={calendar} samples={readSamples(f.executionSamples)}/></TabsContent>
-        <TabsContent value="knowledge"><TradingKnowledge book={book} onChange={updateBook} dirty={bookDirty || dirty} onSave={()=>void save()} conflict={Boolean(bookConflict)} onLoadRemote={()=>{if(bookConflict)loadBook(bookConflict);}} onOverwrite={()=>void save(false,true)} date={date} riskSummary={f.knowledgeRiskSummary||""} onRiskSummary={value=>updateField("knowledgeRiskSummary",value)}/></TabsContent>
+        <TabsContent value="knowledge"><TradingKnowledge key="notes" section="notes" book={book} onChange={updateBook} dirty={bookDirty || dirty} onSave={()=>void save()} conflict={Boolean(bookConflict)} onLoadRemote={()=>{if(bookConflict)loadBook(bookConflict);}} onOverwrite={()=>void save(false,true)} date={date} riskSummary={f.knowledgeRiskSummary||""} onRiskSummary={value=>updateField("knowledgeRiskSummary",value)}/></TabsContent>
+        <TabsContent value="risk"><TradingKnowledge key="risks" section="risks" book={book} onChange={updateBook} dirty={bookDirty || dirty} onSave={()=>void save()} conflict={Boolean(bookConflict)} onLoadRemote={()=>{if(bookConflict)loadBook(bookConflict);}} onOverwrite={()=>void save(false,true)} date={date} riskSummary={f.knowledgeRiskSummary||""} onRiskSummary={value=>updateField("knowledgeRiskSummary",value)}/></TabsContent>
         <TabsContent value="system"><StrategyWorkbench fields={f} onChange={updateField} /></TabsContent>
         <TabsContent value="limit" className="panel-grid"><LimitReview date={date} /><Card className="span-6"><CardHeader><CardTitle>我的题材与竞争关系</CardTitle></CardHeader><CardContent><Textarea value={f.reviewThemes ?? ""} onChange={(e) => updateField("reviewThemes", e.target.value)} placeholder="主线、支线、板块竞争与证据；只存入私人复盘" /></CardContent></Card><Card className="span-6"><CardHeader><CardTitle>我的核心角色判断</CardTitle></CardHeader><CardContent><Textarea value={f.reviewRoles ?? ""} onChange={(e) => updateField("reviewRoles", e.target.value)} placeholder="龙头、中军、补涨、20cm 核心及证伪条件；由我确认" /></CardContent></Card></TabsContent>
-        <TabsContent value="plan" className="panel-grid"><p className="span-12 premium-source">执行以“盘前候选”冻结的名单为准；此处自由文字用于补充情景，不能增加名单外股票。</p>
-          <Card className="span-4"><CardHeader><CardTitle>账户与周期</CardTitle></CardHeader><CardContent className="form-grid two"><Field label="比赛初始资金"><Input type="number" value={f.startEquity} onChange={(e) => updateField("startEquity", e.target.value)} /></Field><Field label="当前净值"><Input type="number" value={f.currentEquity} onChange={(e) => updateField("currentEquity", e.target.value)} /></Field><Field label="历史峰值"><Input type="number" value={f.peakEquity} onChange={(e) => updateField("peakEquity", e.target.value)} /></Field><Field label="当日盈亏额"><Input type="number" value={f.dailyPnl} onChange={(e) => updateField("dailyPnl", e.target.value)} /></Field><Field label="周期阶段"><Select value={f.cyclePhase} onValueChange={(v) => updateField("cyclePhase", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["混沌","启动试错","发育","成型","首次分歧","加速","高位震荡","退潮","冰点修复"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field><Field label="今日允许模式"><Select value={f.tradeMode} onValueChange={(v) => updateField("tradeMode", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["空仓观察","新龙卡位","新龙首次真分歧","主升龙头","老龙反核","老龙反抽","老龙二波","龙头属性补涨","20cm弹性","容量中军趋势"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field></CardContent></Card>
-          <Card className="span-8"><CardHeader><CardTitle>盘面事实</CardTitle></CardHeader><CardContent className="form-grid two"><Field label="指数 / 成交额 / 增减"><Textarea value={f.marketFacts} onChange={(e) => updateField("marketFacts", e.target.value)} /></Field><Field label="涨跌停 / 炸板 / 溢价解读"><Textarea value={f.sentimentFacts} onChange={(e) => updateField("sentimentFacts", e.target.value)} /></Field><Field label="完整梯队"><Textarea value={f.ladder} onChange={(e) => updateField("ladder", e.target.value)} /></Field><Field label="竞争板块与资金流向"><Textarea value={f.rivalSectors} onChange={(e) => updateField("rivalSectors", e.target.value)} /></Field><Field label="监管 / 公告 / 催化事实"><Textarea value={f.regulatoryFacts} onChange={(e) => updateField("regulatoryFacts", e.target.value)} /></Field></CardContent></Card>
-          <Card className="span-7"><CardHeader><CardTitle>每日三个预设候选 · 开盘择一执行</CardTitle></CardHeader><CardContent className="form-grid two"><Field label="候选 1 · 股票与代码"><Input value={f.candidate ?? ""} onChange={(e) => updateField("candidate", e.target.value)} /></Field><Field label="候选 2 · 股票与代码"><Input value={f.candidate2 ?? ""} onChange={(e) => updateField("candidate2", e.target.value)} /></Field><Field label="候选 3 · 股票与代码"><Input value={f.candidate3 ?? ""} onChange={(e) => updateField("candidate3", e.target.value)} /></Field><Field label="候选 2 预设买点"><Input value={f.allowedSetup2 ?? ""} onChange={(e) => updateField("allowedSetup2", e.target.value)} /></Field><Field label="候选 3 预设买点"><Input value={f.allowedSetup3 ?? ""} onChange={(e) => updateField("allowedSetup3", e.target.value)} /></Field><Field label="候选 2 证伪条件"><Input value={f.invalidations2 ?? ""} onChange={(e) => updateField("invalidations2", e.target.value)} /></Field><Field label="候选 3 证伪条件"><Input value={f.invalidations3 ?? ""} onChange={(e) => updateField("invalidations3", e.target.value)} /></Field><Field label="候选 1 角色"><Select value={f.candidateRole} onValueChange={(v) => updateField("candidateRole", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["未确定","同身位卡位者","发育期潜在龙","成型总龙","加速龙头","首次真分歧","老龙反核","老龙反抽","老龙二波","属性补涨","20cm弹性核心","容量中军"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field><Field label="候选 1 明日只允许的买点"><Input value={f.allowedSetup} onChange={(e) => updateField("allowedSetup", e.target.value)} /></Field><Field label="最大仓位 %"><Input type="number" min="0" max="40" value={f.maxPosition} onChange={(e) => updateField("maxPosition", e.target.value)} /></Field><Field label="成为核心的三条证据"><Textarea value={f.leaderEvidence} onChange={(e) => updateField("leaderEvidence", e.target.value)} /></Field><Field label="三条证伪条件"><Textarea value={f.invalidations} onChange={(e) => updateField("invalidations", e.target.value)} /></Field><p className="span-12 text-sm text-muted-foreground">三个候选连同各自买点和证伪条件跨设备同步。开盘只选择一只；同因子候选不算分散，全部证伪则空仓。</p></CardContent></Card>
-          <Card className="span-5"><CardHeader><CardTitle>监管核对</CardTitle></CardHeader><CardContent className="form-grid"><Field label="标的与窗口"><Input value={f.abnormalStock || ""} onChange={(e) => updateField("abnormalStock", e.target.value)} placeholder="股票 + 规则窗口" /></Field><Field label="对应窗口起止日"><Input value={f.abnormalWindow || ""} onChange={(e) => updateField("abnormalWindow", e.target.value)} placeholder="10日 / 30日，注明交易所" /></Field><Field label="累计偏离值 %"><Input type="number" step="0.01" value={f.abnormalDeviation || ""} onChange={(e) => updateField("abnormalDeviation", e.target.value)} /></Field><Field label="距阈值百分点"><Input type="number" step="0.01" value={f.abnormalGap || ""} onChange={(e) => updateField("abnormalGap", e.target.value)} /></Field><Field label="盘后公告与续杯确认"><Textarea value={f.monitorAfterClose || ""} onChange={(e) => updateField("monitorAfterClose", e.target.value)} placeholder="来源、时间、是否解除；未知写待核" /></Field><p className="text-sm text-muted-foreground">偏离值是个股区间收益与对应指数区间收益之差，不能将剩余百分点直接当作股价空间；到期不等于自动解除。</p></CardContent></Card>
-        </TabsContent>
-        <TabsContent value="opening" className="panel-grid"><HoldingExecution fields={f} onChange={updateField} /><YesterdayPremium /><PlannedExecution key={date} date={date} fields={f} onChange={updateField} book={book} calendar={calendar}/><ExecutionJournal date={date} fields={f} onChange={updateField}/>
-          <Card className="span-7"><CardHeader><CardTitle>开盘事实与动作</CardTitle></CardHeader><CardContent className="form-grid two"><Field label="9:25竞价"><Textarea value={f.auction} onChange={(e) => updateField("auction", e.target.value)} /></Field><Field label="开盘后总龙承接"><Textarea value={f.firstFive} onChange={(e) => updateField("firstFive", e.target.value)} /></Field><Field label="竞争者实际表现"><Textarea value={f.openingRivals} onChange={(e) => updateField("openingRivals", e.target.value)} /></Field><Field label="与昨晚预案偏差"><Textarea value={f.planDelta} onChange={(e) => updateField("planDelta", e.target.value)} /></Field><Field label="最终动作"><Select value={f.action} onValueChange={(v) => updateField("action", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["空仓","买入","持有","减仓","清仓"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field><Field label="实际仓位 %"><Input type="number" value={f.actualPosition} onChange={(e) => updateField("actualPosition", e.target.value)} /></Field><Field label="执行价格 / 原因 / 证据"><Textarea value={f.executionNote} onChange={(e) => updateField("executionNote", e.target.value)} /></Field></CardContent></Card>
-          <Card className={`span-5 gate-card ${gatePassed ? "pass" : "stop"}`}><CardHeader><CardTitle>下单授权闸门</CardTitle></CardHeader><CardContent className="check-list"><Field label="今日选择执行哪只候选"><Select value={f.executionCandidate || "none"} onValueChange={(v) => updateField("executionCandidate", v === "none" ? "" : v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">未选择 · 空仓</SelectItem>{candidates.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent></Select></Field>{gateChecks.map((item) => <CheckItem key={item[0]} item={item} checked={Boolean(payload.checks[item[0]])} onChange={(v) => updateCheck(item[0], v)} />)}<p className="liquidity-note">{liquidityIssues.length ? liquidityIssues.join("；") : "量能与退出卡已填写，继续核对其他条件。"}{f.ticketStock !== f.executionCandidate ? "；交易票标的必须与执行候选一致" : ""}</p><p className="liquidity-note">{certaintyIssues.length ? certaintyIssues.join("；") : "四要素与入场机制已核对，填写完整不代表已验证优势。"}</p><p className="liquidity-note">{workflowIssues.join("；")}</p><div className="gate-result">{gatePassed ? <><Check />允许执行：仅限 {f.executionCandidate}，仓位≤{f.maxPosition}%</> : <><AlertTriangle />默认不下单：条件尚未全部满足</>}</div></CardContent></Card>
-        </TabsContent>
+        <TabsContent value="opening" className="panel-grid"><PlannedExecution key={date} date={date} fields={f} onChange={updateField} book={book} calendar={calendar} onPrepare={()=>setActiveTab("funnel")}/><ExecutionJournal date={date} fields={f} onChange={updateField}/><details className="span-12 intraday-holdings"><summary>持仓处理 · 持有、减仓与退出</summary><HoldingExecution fields={f} onChange={updateField}/></details></TabsContent>
         <TabsContent value="review" className="panel-grid"><StrategyResearch fields={f} onChange={updateField} days={researchDays} /><ExitReview fields={f} onChange={updateField} /><CertaintyReview fields={f} onChange={updateField} />
           <Card className="span-6"><CardHeader><CardTitle>交易与纠偏</CardTitle></CardHeader><CardContent className="form-grid"><Field label="买卖理由与实际偏差"><Textarea value={f.tradeReview} onChange={(e) => updateField("tradeReview", e.target.value)} /></Field><Field label="如果重来，只改一个动作"><Textarea value={f.oneChange} onChange={(e) => updateField("oneChange", e.target.value)} /></Field><Field label="错误标签"><Select value={f.errorTag} onValueChange={(v) => updateField("errorTag", v)}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["无","计划外交易","非预设候选","价格到位即满仓","环境否决后仍加仓","拥挤/节前风险漏算","逻辑漂移","追加速","退潮接力","后排套利","仓位超限","证伪后不撤","超时开仓","卖点拖延","同时间量能未核对","加速失败仍按成功预期持仓","因浮亏扩大风险预算","等待回本/回封锁仓","结果替代过程评价"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></Field><Field label="明日唯一纠偏"><Textarea value={f.correction} onChange={(e) => updateField("correction", e.target.value)} /></Field></CardContent></Card>
           <Card className="span-12"><CardHeader><CardTitle>过程纪律打卡</CardTitle></CardHeader><CardContent className="discipline-grid">{disciplineChecks.map((item) => <CheckItem key={item[0]} item={item} checked={Boolean(payload.checks[item[0]])} onChange={(v) => updateCheck(item[0], v)} />)}</CardContent></Card>
