@@ -24,6 +24,7 @@ import { CertaintyReview } from "@/app/trade-certainty";
 import { StrategyResearch } from "@/app/strategy-research";
 import { accountRisk } from "@/lib/strategy-research";
 import { TradingDiscipline } from "@/app/trading-discipline";
+import { TradingKnowledge } from "@/app/trading-knowledge";
 import { TradingPreparation } from "@/app/trading-preparation";
 import { ExecutionJournal, PlannedExecution } from "@/app/planned-execution";
 import { defaultBook, readBook, sameBook, type DisciplineBook } from "@/lib/trading-discipline";
@@ -185,7 +186,7 @@ export function DashboardClient() {
     const latest = await pullDocument(activeConfig);
     if ((saveLock.current || epoch !== syncEpoch.current) && !initial) return [];
     const remoteBook = latest.document.disciplineBook === undefined ? defaultBook() : readBook(latest.document.disciplineBook);
-    if (!remoteBook) throw new Error("交易纪律格式无法识别，已保留本地内容，请先检查远端数据");
+    if (!remoteBook) throw new Error("纪律与知识格式无法识别，已保留本地内容，请先检查远端数据");
     if (initial || !bookDirtyRef.current) { setBook(remoteBook); bookRef.current = remoteBook; baseBookRef.current = structuredClone(remoteBook); setBookDirty(false); bookDirtyRef.current = false; setBookConflict(null); bookConflictRef.current = null; }
     else if (!sameBook(remoteBook, baseBookRef.current)) { setBookConflict(remoteBook); bookConflictRef.current = remoteBook; }
     const incoming = documentToRecords(latest.document, latest.sha);
@@ -267,12 +268,12 @@ export function DashboardClient() {
       }
       const remoteBook = latest.document.disciplineBook === undefined ? defaultBook() : readBook(latest.document.disciplineBook);
       if (!remoteBook) throw new Error("远端纪律格式无效，已停止覆盖");
-      if (bookWanted && !sameBook(remoteBook,baseBookRef.current) && !forceBook) { setBookConflict(remoteBook); bookConflictRef.current = remoteBook; setStatus("另一台设备已修改纪律，本页内容仍保留"); return; }
+      if (bookWanted && !sameBook(remoteBook,baseBookRef.current) && !forceBook) { setBookConflict(remoteBook); bookConflictRef.current = remoteBook; setStatus("另一台设备已修改纪律或知识，本页内容仍保留"); return; }
       const now = new Date().toISOString();
       const document: ReviewDocument = { ...latest.document, schemaVersion: 7, updatedAt: now, records: { ...latest.document.records } };
       if (dayWanted) document.records[targetDate] = { payload: snapshot, updatedAt: now, device: activeConfig.device };
       if (bookWanted) document.disciplineBook = { ...bookSnapshot, updatedAt: now };
-      const result = await pushDocument(activeConfig, document, latest.sha, `data: 更新 ${targetDate}${bookWanted ? "与交易纪律" : ""}（${activeConfig.device}）`);
+      const result = await pushDocument(activeConfig, document, latest.sha, `data: 更新 ${targetDate}${bookWanted ? "与纪律/知识" : ""}（${activeConfig.device}）`);
       const shortSha = result.commit.sha.slice(0, 7);
       const fileRevision = result.content.sha.slice(0, 7);
       if (dateRef.current === targetDate) {
@@ -426,10 +427,11 @@ export function DashboardClient() {
         <p className="guardrail-bottom">执行顺序：先看赚钱效应与负反馈 → 再看身份和资金链 → 最后才看价格、异动余量与形态。</p>
       </section></details>
       {accountIssues.length > 0 && <div className="notice-row"><div><strong>账户风险闸门：暂不新增交易</strong><p>{accountIssues.join("；")}。请在“低吸雷达”核查后，于“今晚计划/盘中执行”落实风控。</p></div></div>}
-      <Tabs defaultValue="funnel" className="main-tabs" data-compact={!showLegacy}><TabsList className="tab-list"><TabsTrigger value="effect">赚钱效应</TabsTrigger><TabsTrigger value="funnel">盘前候选</TabsTrigger><TabsTrigger value="plan">今晚计划</TabsTrigger><TabsTrigger value="opening">盘中执行</TabsTrigger><TabsTrigger value="discipline">交易纪律</TabsTrigger>{showLegacy && <><TabsTrigger value="system">旧·策略风控</TabsTrigger><TabsTrigger value="review">旧·盘后复盘</TabsTrigger><TabsTrigger value="limit">旧·涨停图</TabsTrigger><TabsTrigger value="history">旧·历史统计</TabsTrigger></>}</TabsList>
+      <Tabs defaultValue="funnel" className="main-tabs" data-compact={!showLegacy}><TabsList className="tab-list"><TabsTrigger value="effect">赚钱效应</TabsTrigger><TabsTrigger value="funnel">盘前候选</TabsTrigger><TabsTrigger value="plan">今晚计划</TabsTrigger><TabsTrigger value="opening">盘中执行</TabsTrigger><TabsTrigger value="discipline">交易纪律</TabsTrigger><TabsTrigger value="knowledge">操盘知识</TabsTrigger>{showLegacy && <><TabsTrigger value="system">旧·策略风控</TabsTrigger><TabsTrigger value="review">旧·盘后复盘</TabsTrigger><TabsTrigger value="limit">旧·涨停图</TabsTrigger><TabsTrigger value="history">旧·历史统计</TabsTrigger></>}</TabsList>
         <TabsContent value="effect"><EffectObserver fields={f} onChange={updateField} recent={recentEffectDays} /></TabsContent>
         <TabsContent value="funnel"><TradingPreparation key={date} date={date} fields={f} onChange={updateField} onCalendar={setCalendar}/><Button variant="outline" onClick={()=>setShowLegacy(v=>!v)}>{showLegacy?"收起旧版研究":"展开旧版雷达与完整复盘"}</Button>{showLegacy && <LowAbsorptionFunnel date={date} fields={f} onChange={updateField} summary={{ days: records.length, winRate: String(stats.winRate), pnl: stats.totalPnl }} onExport={exportCloud} onToggleLegacy={() => setShowLegacy((v) => !v)} legacyVisible={showLegacy} />}</TabsContent>
         <TabsContent value="discipline"><TradingDiscipline book={book} onChange={updateBook} dirty={bookDirty} onSave={()=>void save()} conflict={Boolean(bookConflict)} onLoadRemote={()=>{if(bookConflict)loadBook(bookConflict);}} onOverwrite={()=>void save(false,true)} date={date} calendar={calendar} samples={readSamples(f.executionSamples)}/></TabsContent>
+        <TabsContent value="knowledge"><TradingKnowledge book={book} onChange={updateBook} dirty={bookDirty || dirty} onSave={()=>void save()} conflict={Boolean(bookConflict)} onLoadRemote={()=>{if(bookConflict)loadBook(bookConflict);}} onOverwrite={()=>void save(false,true)} date={date} riskSummary={f.knowledgeRiskSummary||""} onRiskSummary={value=>updateField("knowledgeRiskSummary",value)}/></TabsContent>
         <TabsContent value="system"><StrategyWorkbench fields={f} onChange={updateField} /></TabsContent>
         <TabsContent value="limit" className="panel-grid"><LimitReview date={date} /><Card className="span-6"><CardHeader><CardTitle>我的题材与竞争关系</CardTitle></CardHeader><CardContent><Textarea value={f.reviewThemes ?? ""} onChange={(e) => updateField("reviewThemes", e.target.value)} placeholder="主线、支线、板块竞争与证据；只存入私人复盘" /></CardContent></Card><Card className="span-6"><CardHeader><CardTitle>我的核心角色判断</CardTitle></CardHeader><CardContent><Textarea value={f.reviewRoles ?? ""} onChange={(e) => updateField("reviewRoles", e.target.value)} placeholder="龙头、中军、补涨、20cm 核心及证伪条件；由我确认" /></CardContent></Card></TabsContent>
         <TabsContent value="plan" className="panel-grid"><p className="span-12 premium-source">执行以“盘前候选”冻结的名单为准；此处自由文字用于补充情景，不能增加名单外股票。</p>
