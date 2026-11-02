@@ -49,7 +49,7 @@ jobs:
         run: |
           set -euo pipefail
           day="${REQUESTED_DATE:-$(TZ=Asia/Shanghai date +%F)}"
-          python -c 'from datetime import date; import sys; d=date.fromisoformat(sys.argv[1]); assert d <= date.today(), "future trade date"' "$day"
+          python -c 'from datetime import date, datetime; from zoneinfo import ZoneInfo; import sys; d=date.fromisoformat(sys.argv[1]); assert d <= datetime.now(ZoneInfo("Asia/Shanghai")).date(), "future trade date"' "$day"
           echo "date=$day" >> "$GITHUB_OUTPUT"
       - name: Build daily limit-up archive
         run: python scripts/build_limit_review.py --trade-date "${{ steps.trade_date.outputs.date }}"
@@ -64,11 +64,9 @@ jobs:
       - name: Capture full infographic
         run: |
           python - <<'PY'
-          from datetime import datetime
           from pathlib import Path
-          from zoneinfo import ZoneInfo
           from playwright.sync_api import sync_playwright
-          path = Path('/tmp/limit-review') / (datetime.now(ZoneInfo('Asia/Shanghai')).strftime('%Y-%m-%d') + '.html')
+          path = Path('/tmp/limit-review') / "${{ steps.trade_date.outputs.date }}.html"
           with sync_playwright() as p:
               browser = p.chromium.launch()
               page = browser.new_page(viewport={'width': 1500, 'height': 1000}, device_scale_factor=2)
