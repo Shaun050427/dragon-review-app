@@ -6,7 +6,7 @@ import math
 import os
 import re
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -88,16 +88,28 @@ def render(data):
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--trade-date", help="明确指定历史交易日补采；默认北京时间当天")
+    args = parser.parse_args()
     now = datetime.now(TZ)
-    if now.weekday() >= 5 or now.hour < 15:
-        raise RuntimeError("仅在交易日收盘后采集；空池不覆盖旧快照")
-    date = now.strftime("%Y%m%d")
-    ups = normalize_pool(ak.stock_zt_pool_em(date=date), board=True)
-    downs = normalize_pool(ak.stock_zt_pool_dtgc_em(date=date))
-    broken = normalize_pool(ak.stock_zt_pool_zbgc_em(date=date))
+    if args.trade_date:
+        target = date.fromisoformat(args.trade_date)
+        if target > now.date():
+            raise ValueError("禁止补采未来日期")
+        if target == now.date() and (now.weekday() >= 5 or now.hour < 15):
+            raise RuntimeError("当日仅收盘后采集；盘中数据不覆盖收盘快照")
+    else:
+        if now.weekday() >= 5 or now.hour < 15:
+            raise RuntimeError("仅在交易日收盘后采集；空池不覆盖旧快照")
+        target = now.date()
+    trade_date = target.strftime("%Y%m%d")
+    ups = normalize_pool(ak.stock_zt_pool_em(date=trade_date), board=True)
+    downs = normalize_pool(ak.stock_zt_pool_dtgc_em(date=trade_date))
+    broken = normalize_pool(ak.stock_zt_pool_zbgc_em(date=trade_date))
     lhb = []
     try:
-        frame = ak.stock_lhb_detail_em(start_date=date, end_date=date)
+        frame = ak.stock_lhb_detail_em(start_date=trade_date, end_date=trade_date)
         if {"代码", "名称", "上榜原因", "龙虎榜净买额"}.issubset(frame.columns):
             seen = set()
             for _, row in frame.iterrows():
@@ -108,7 +120,7 @@ def main():
                 lhb.append({"code": code, "name": str(row["名称"]), "reason": str(row["上榜原因"]), "netBuy": number(row["龙虎榜净买额"])})
     except Exception as exc:
         print(f"龙虎榜暂不可用：{exc}")
-    data = build(now.strftime("%Y-%m-%d"), now.isoformat(timespec="seconds"), ups, downs, broken, lhb)
+    data = build(target.isoformat(), now.isoformat(timespec="seconds"), ups, downs, broken, lhb)
     OUT.mkdir(parents=True, exist_ok=True)
     stem = data["tradeDate"]
     (OUT / f"{stem}.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
