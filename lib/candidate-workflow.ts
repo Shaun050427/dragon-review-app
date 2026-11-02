@@ -35,6 +35,11 @@ export function buildPool(sessions: string[], days: FunnelDay[], radar: RadarSna
     p.maxBoards = Math.max(p.maxBoards, m.maxBoards || 0);
     const t = m.research?.touches.find(t => t.period === 5);
     p.ma5First = Boolean(t?.touching && t.touchCount === 1);
+    const limitDownToday = Boolean(m.recent?.some(r => r.date === last && r.limitDown));
+    if (p.queue !== "A" && limitDownToday) {
+      p.reasons.push(`${last} 当日跌停，暂停B池提名`);
+      continue;
+    }
     if (p.queue !== "A" && p.ma5First && (p.maxBoards >= 3 || Boolean(active && sessions.includes(active)))) p.queue = "B";
   }
   for (const m of manual) if (/^\d{6}$/.test(m.code) && m.name?.trim() && m.evidence?.trim() && sessions.includes(m.date)) add(m.code,m.name,m.industry,m.date,0,`人工核心：${m.evidence}`);
