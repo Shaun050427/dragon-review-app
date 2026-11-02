@@ -2,16 +2,24 @@ name: Archive daily limit-up review
 
 on:
   workflow_dispatch:
+    inputs:
+      trade_date:
+        description: "补采交易日，格式 YYYY-MM-DD；留空则采集北京时间当天"
+        required: false
+        type: string
   push:
     branches: [main]
     paths:
+      - scripts/build_limit_review.py
       - scripts/build_low_absorption.py
       - scripts/market_history.py
+      - scripts/requirements-market.txt
       - .github/workflows/limit-review.yml
   schedule:
-    # 15:20 and 16:10 China time; later attempt may add disclosed LHB rows.
+    # 北京时间15:20、16:10、17:30三次收盘采集/补偿尝试。
     - cron: '20 7 * * 1-5'
     - cron: '10 8 * * 1-5'
+    - cron: '30 9 * * 1-5'
 
 permissions:
   contents: write
@@ -34,15 +42,25 @@ jobs:
       - run: pip install -r scripts/requirements-market.txt playwright==1.58.0
       - run: python -m playwright install --with-deps chromium
       - run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk
-      - run: python scripts/build_limit_review.py
+      - name: Resolve requested trading date
+        id: trade_date
+        env:
+          REQUESTED_DATE: ${{ inputs.trade_date }}
+        run: |
+          set -euo pipefail
+          day="${REQUESTED_DATE:-$(TZ=Asia/Shanghai date +%F)}"
+          python -c 'from datetime import date; import sys; d=date.fromisoformat(sys.argv[1]); assert d <= date.today(), "future trade date"' "$day"
+          echo "date=$day" >> "$GITHUB_OUTPUT"
+      - name: Build daily limit-up archive
+        run: python scripts/build_limit_review.py --trade-date "${{ steps.trade_date.outputs.date }}"
       - name: Build end-of-day low absorption radar
         id: radar
         continue-on-error: true
         run: |
           git fetch origin market-data
           git worktree add --detach /tmp/dragon-market-data origin/market-data
-          day="$(TZ=Asia/Shanghai date +%F)"
-          timeout 6m python scripts/build_low_absorption.py --archive-dir /tmp/dragon-market-data --today "/tmp/limit-review/$day.json" --out /tmp/low-absorption
+          day="${{ steps.trade_date.outputs.date }}"
+          timeout 6m python scripts/build_low_absorption.py --archive-dir /tmp/dragon-market-data --today "/tmp/limit-review/$day.json" --out /tmp/low-absorption --trade-date "$day"
       - name: Capture full infographic
         run: |
           python - <<'PY'
@@ -61,7 +79,7 @@ jobs:
       - name: Publish dated archive and latest pointer
         run: |
           set -euo pipefail
-          day="$(TZ=Asia/Shanghai date +%F)"
+          day="${{ steps.trade_date.outputs.date }}"
           year="${day:0:4}"
           month="${day:5:2}"
           git config user.name 'github-actions[bot]'
@@ -92,13 +110,13 @@ jobs:
 
       - name: Verify radar publication health
         if: always()
+        env:
+          TRADE_DATE: ${{ steps.trade_date.outputs.date }}
         run: |
           python - <<'PYHEALTH'
           import json
-          from datetime import datetime
           from pathlib import Path
-          from zoneinfo import ZoneInfo
-          day = datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y/%m/%Y-%m-%d.json")
+          day = "${{ steps.trade_date.outputs.date }}".replace("-", "/") + ".json"
           root = Path("/tmp/low-absorption")
           radar = json.loads((root / "radar" / day).read_text())
           report = json.loads((root / "research" / day).read_text())
