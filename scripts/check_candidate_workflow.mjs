@@ -17,6 +17,10 @@ const radarWithBrokenCore={...radar,stocks:[...radar.stocks,{code:'000006',name:
 const repairedPool=buildPool(sessions,days,radarWithBrokenCore);
 assert.equal(repairedPool.find(s=>s.code==='000006').maxBoards,5);
 assert.equal(repairedPool.find(s=>s.code==='000006').queue,'B');
+const radarWithLimitDown={...radar,stocks:[...radar.stocks,{code:'000006',name:'broken',industry:'fixture',maxBoards:5,dataDate:sessions.at(-1),recent:[{date:sessions.at(-1),limitDown:true}],research:{lastActive:sessions[1],touches:[{period:5,touching:true,touchCount:1}]}}]};
+const limitDownPool=buildPool(sessions,days,radarWithLimitDown);
+assert.equal(limitDownPool.find(s=>s.code==='000006').queue,'');
+assert.ok(limitDownPool.find(s=>s.code==='000006').reasons.some(r=>r.includes('当日跌停')));
 assert.equal(pool.some(s=>s.code==='999999'),false);
 assert.equal(buildPool(sessions,days,{...radar,tradeDate:'2026-10-28'}).find(s=>s.code==='000003').ma5First,false);
 assert.equal(buildPool(sessions,days,{...radar,stocks:[{...radar.stocks[0],research:{...radar.stocks[0].research,touches:[{period:5,touching:true,touchCount:2}]}}]}).find(s=>s.code==='000003').queue,'');
