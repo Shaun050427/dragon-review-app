@@ -30,8 +30,16 @@ export function buildPool(sessions: string[], days: FunnelDay[], radar: RadarSna
     const active = m.research?.lastActive;
     if (!map.has(m.code) && active && sessions.includes(active)) add(m.code,m.name || m.code,m.industry || "",last,m.maxBoards || 0,`有效进攻 ${active}，核心地位待核`);
     const p = map.get(m.code); if (!p) continue;
+    // A name may already exist from a broken-board or other daily archive row.
+    // Merge the longer radar identity history even when that map entry exists.
+    p.maxBoards = Math.max(p.maxBoards, m.maxBoards || 0);
     const t = m.research?.touches.find(t => t.period === 5);
     p.ma5First = Boolean(t?.touching && t.touchCount === 1);
+    const limitDownToday = Boolean(m.recent?.some(r => r.date === last && r.limitDown));
+    if (p.queue !== "A" && limitDownToday) {
+      p.reasons.push(`${last} 当日跌停，暂停B池提名`);
+      continue;
+    }
     if (p.queue !== "A" && p.ma5First && (p.maxBoards >= 3 || Boolean(active && sessions.includes(active)))) p.queue = "B";
   }
   for (const m of manual) if (/^\d{6}$/.test(m.code) && m.name?.trim() && m.evidence?.trim() && sessions.includes(m.date)) add(m.code,m.name,m.industry,m.date,0,`人工核心：${m.evidence}`);
