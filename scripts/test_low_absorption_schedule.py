@@ -5,6 +5,7 @@ import textwrap
 from datetime import datetime
 from pathlib import Path
 from resolve_market_date import resolve_date
+from publish_market_archive import publish_files
 
 
 class ScheduleTest(unittest.TestCase):
@@ -38,3 +39,25 @@ class ScheduleTest(unittest.TestCase):
             path.write_text(json.dumps({"stocks": [{"error": "stale"}]}))
             with self.assertRaises(SystemExit):
                 exec(compile(script, "workflow-health", "exec"), {})
+
+    def test_daily_facts_publish_before_radar_without_regressing_pointers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, daily, radar = [Path(directory) / name for name in ["repo", "daily", "radar"]]
+            for p in [root, daily, radar]:
+                p.mkdir()
+            (daily / "2026-11-03.json").write_text(json.dumps({"schemaVersion": 1, "tradeDate": "2026-11-03", "stocks": [{"code": "000001"}]}))
+            (daily / "2026-11-03.html").write_text("fixture")
+            (daily / "session-calendar.json").write_text(json.dumps({"coveredThrough": "2026-12-31"}))
+            publish_files(root, daily, radar, "2026-11-03", "daily")
+            self.assertTrue((root / "daily/2026/11/2026-11-03.json").exists())
+            self.assertFalse((root / "radar").exists())
+            self.assertEqual(json.loads((root / "latest-limit-review.json").read_text())["tradeDate"], "2026-11-03")
+            with self.assertRaises(ValueError):
+                publish_files(root, daily, radar, "2026-11-03", "radar")
+            self.assertTrue((root / "daily/2026/11/2026-11-03.json").exists())
+            (root / "latest-limit-review.json").write_text(json.dumps({"tradeDate": "2026-11-04"}))
+            publish_files(root, daily, radar, "2026-11-03", "daily")
+            self.assertEqual(json.loads((root / "latest-limit-review.json").read_text())["tradeDate"], "2026-11-04")
+            (daily / "2026-11-03.json").write_text(json.dumps({"schemaVersion": 1, "tradeDate": "2026-11-02", "stocks": [{"code": "000001"}]}))
+            with self.assertRaises(ValueError):
+                publish_files(root, daily, radar, "2026-11-03", "daily")

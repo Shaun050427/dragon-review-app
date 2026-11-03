@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       trade_date:
-        description: "补采交易日，格式 YYYY-MM-DD；留空则采集北京时间当天"
+        description: "补采交易日，格式 YYYY-MM-DD；留空自动采集最近已收盘交易日"
         required: false
         type: string
   push:
@@ -15,12 +15,12 @@ on:
       - scripts/market_history.py
       - scripts/requirements-market.txt
       - scripts/resolve_market_date.py
+      - scripts/publish_market_archive.py
       - .github/workflows/limit-review.yml
   schedule:
-    # 北京时间15:20、16:10、17:30三次收盘采集/补偿尝试。
-    - cron: '20 7 * * 1-5'
-    - cron: '10 8 * * 1-5'
-    - cron: '30 9 * * 1-5'
+    # GitHub cron可能延迟；收盘后多轮补偿，次日盘前再补一次。
+    - cron: '17,47 7-14 * * 1-5'
+    - cron: '13 0 * * 2-6'
 
 permissions:
   contents: write
@@ -40,9 +40,7 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: scripts/requirements-market.txt
-      - run: pip install -r scripts/requirements-market.txt playwright==1.58.0
-      - run: python -m playwright install --with-deps chromium
-      - run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk
+      - run: pip install -r scripts/requirements-market.txt
       - name: Resolve requested trading date
         id: trade_date
         env:
@@ -50,15 +48,25 @@ jobs:
         run: python scripts/resolve_market_date.py
       - name: Build daily limit-up archive
         run: python scripts/build_limit_review.py --trade-date "${{ steps.trade_date.outputs.date }}"
+      - name: Publish daily candidates immediately
+        run: |
+          git fetch origin market-data
+          git worktree add --detach /tmp/dragon-market-data origin/market-data
+          python scripts/publish_market_archive.py --phase daily --trade-date "${{ steps.trade_date.outputs.date }}"
       - name: Build end-of-day low absorption radar
         id: radar
         continue-on-error: true
         run: |
-          git fetch origin market-data
-          git worktree add --detach /tmp/dragon-market-data origin/market-data
           day="${{ steps.trade_date.outputs.date }}"
           timeout 6m python scripts/build_low_absorption.py --archive-dir /tmp/dragon-market-data --today "/tmp/limit-review/$day.json" --out /tmp/low-absorption --trade-date "$day"
+      - name: Install optional infographic browser
+        continue-on-error: true
+        run: |
+          pip install playwright==1.58.0
+          python -m playwright install --with-deps chromium
+          sudo apt-get update && sudo apt-get install -y fonts-noto-cjk
       - name: Capture full infographic
+        continue-on-error: true
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -71,52 +79,8 @@ jobs:
               page.screenshot(path=str(path.with_suffix('.png')), full_page=True)
               browser.close()
           PY
-      - name: Publish dated archive and latest pointer
-        run: |
-          set -euo pipefail
-          day="${{ steps.trade_date.outputs.date }}"
-          year="${day:0:4}"
-          month="${day:5:2}"
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git fetch origin market-data
-          git checkout -B market-data origin/market-data
-          mkdir -p "daily/$year/$month"
-          cp "/tmp/limit-review/$day.json" "/tmp/limit-review/$day.html" "/tmp/limit-review/$day.png" "daily/$year/$month/"
-          if python - "$day" <<'PYLATEST'
-          import json, sys
-          from pathlib import Path
-          p = Path("latest-limit-review.json")
-          previous = json.loads(p.read_text()).get("tradeDate", "") if p.exists() else ""
-          sys.exit(0 if sys.argv[1] >= previous else 1)
-          PYLATEST
-          then cp "/tmp/limit-review/$day.json" latest-limit-review.json; fi
-          git add "daily/$year/$month" latest-limit-review.json
-          if [ -f "/tmp/low-absorption/radar/$year/$month/$day.json" ] && [ -f /tmp/low-absorption/trading-calendar.json ]; then
-            mkdir -p "radar/$year/$month"
-            cp "/tmp/low-absorption/radar/$year/$month/$day.json" "radar/$year/$month/"
-            python - <<'PYCALENDAR'
-          import json, shutil
-          from pathlib import Path
-          incoming = Path("/tmp/low-absorption/trading-calendar.json")
-          existing = Path("trading-calendar.json")
-          old = json.loads(existing.read_text()).get("coveredThrough", "") if existing.exists() else ""
-          if json.loads(incoming.read_text())["coveredThrough"] >= old:
-              shutil.copyfile(incoming, existing)
-          PYCALENDAR
-            git add "radar/$year/$month" trading-calendar.json
-            if [ -f "/tmp/low-absorption/research/$year/$month/$day.json" ]; then
-              mkdir -p "research/$year/$month"
-              cp "/tmp/low-absorption/research/$year/$month/$day.json" "research/$year/$month/"
-              git add "research/$year/$month/$day.json"
-            fi
-          else
-            echo '::warning::Daily radar unavailable; original archive preserved, no fabricated calendar or prices.'
-          fi
-          if ! git diff --cached --quiet; then
-            git commit -m "market: archive limit-up review $day"
-            git push origin HEAD:market-data
-          fi
+      - name: Publish radar and optional infographic
+        run: python scripts/publish_market_archive.py --phase radar --trade-date "${{ steps.trade_date.outputs.date }}"
 
       - name: Verify radar publication health
         if: ${{ always() && steps.radar.outcome != 'skipped' && steps.trade_date.outputs.date != '' }}

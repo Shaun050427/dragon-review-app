@@ -94,3 +94,15 @@ assert.equal(modelStudy([studySample,studySample,{...studySample,id:'paper',mode
 assert.equal(modelStudy([{...studySample,strategy:'MA10'}])[1].count,1);
 const leads=themeLeads([{date:'2026-10-30',stocks:[stock('000001',1)]},{date:'2026-11-02',stocks:[stock('000002',1),{...stock('000003',2),industry:'fresh'},stock('000004',3)]}],'2026-11-02');assert.equal(leads.length,2);assert.equal(leads.find(s=>s.industry==='fresh').unseen,true);assert.equal(leads.find(s=>s.industry==='fixture').unseen,false);
 console.log('PASS: environment freeze, observe permission, excluded themes, MA10 isolation, support-before-trigger, pause, legacy protection and independent 20-sample studies');
+
+const {preparationWindow}=await import('../lib/preparation-freshness.ts');
+const fullCalendar={...nextCalendar,coveredThrough:'2026-11-09',sessions:[...nextCalendar.sessions,'2026-11-04','2026-11-05','2026-11-06','2026-11-09']};
+const afterClose=new Date('2026-11-03T19:00:00+08:00');
+assert.equal(preparationWindow('2026-11-04',fullCalendar,afterClose).expected,'2026-11-03');
+assert.ok(preparationWindow('2026-11-04',{...nextCalendar,coveredThrough:'2026-11-02'},afterClose).warning);
+assert.equal(preparationWindow('2026-11-04',fullCalendar,new Date('2026-11-03T14:59:00+08:00')).expected,'2026-11-02');
+assert.equal(preparationWindow('2026-11-03',fullCalendar,afterClose).expected,'2026-11-02');
+assert.ok(preparationWindow('2026-11-04',fullCalendar,afterClose,'2026-11-02').warning);
+assert.equal(preparationWindow('2026-11-09',fullCalendar,new Date('2026-11-08T19:00:00+08:00')).expected,'2026-11-06');
+assert.equal(preparationWindow('2026-11-04',null,afterClose).sessions.length,0);
+console.log('PASS: expected preparation date is independent of archive availability; pre-close, historical, weekend and stale-calendar guards');
