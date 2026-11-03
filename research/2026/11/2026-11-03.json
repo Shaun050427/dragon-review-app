@@ -64,10 +64,6 @@
       "reason": "日线存在缺口/停牌；均线与首次触线待人工核对"
     },
     {
-      "code": "001239",
-      "reason": "东方财富直连前复权: RemoteDisconnected: Remote end closed connection without response | 腾讯备用前复权: ValueError: 缺指数日线/明确前复权日线"
-    },
-    {
       "code": "002931",
       "reason": "日线存在缺口/停牌；均线与首次触线待人工核对"
     },
