@@ -521,3 +521,5 @@ button, input, textarea { font: inherit; }
 .execution-plan-strip p { margin:4px 0; font-size:13px; }
 .execution-plan-strip small { color:var(--muted-foreground); }
 .intraday-execution textarea { min-height:68px; }
+
+.market-context-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px}.market-preparation textarea{min-height:70px}.theme-leads{max-height:300px;overflow:auto}.market-preparation fieldset{min-width:0}.model-study{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.model-study p{font-size:13px;padding:12px;border:1px solid var(--border);border-radius:10px;color:var(--muted-foreground)}.model-study b{display:block;color:var(--primary)}@media(max-width:720px){.market-context-grid,.model-study{grid-template-columns:1fr}}

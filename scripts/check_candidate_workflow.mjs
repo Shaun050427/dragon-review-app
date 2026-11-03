@@ -65,3 +65,32 @@ assert.ok(readBook({...defaultBook(),knowledge}));assert.ok(readBook({...default
 for(const malformed of [null,{notes:[null],risks:[]},{notes:[{id:'a',content:'x'},{id:'a',content:'y'}],risks:[]},{notes:[],risks:[{id:'x',content:4}]}]){assert.equal(validKnowledge(malformed),false);assert.equal(readBook({...defaultBook(),knowledge:malformed}),null);}
 const movedNotes=moveKnowledge(knowledge,'notes',knowledge.notes[0].id,knowledge.notes[2].id);assert.equal(movedNotes.notes[2].id,knowledge.notes[0].id);assert.deepEqual(movedNotes.risks,knowledge.risks);assert.equal(knowledge.notes[0].id,'tech-rebound');
 console.log('PASS: knowledge seeds, legacy book compatibility, duplicate/malformed rejection, isolated reorder and empty-list preservation');
+
+const {marketContext,themeLeads}=await import('../lib/market-preparation.ts');
+const {marketPlanIssues,modelStudy,readPicks}=await import('../lib/candidate-workflow.ts');
+const nextSessions=['2026-10-27','2026-10-28','2026-10-29','2026-10-30','2026-11-02'];
+const newPicks=frozen.picks.map(p=>({...p,theme:'fixture new',supportPlan:'low then VWAP, volume and peers',exitPlan:'break low or sector fails'}));
+const context=marketContext({marketTemperature:'震荡/分歧',capitalStyle:'低位新题材',marketContextEvidence:'dated close proof'},'2026-11-03','2026-11-02');
+assert.equal(context.permission,'observe');assert.equal(marketContext({},'2026-11-04','2026-11-03').permission,'pending');
+assert.deepEqual(marketPlanIssues(context,newPicks),[]);
+assert.ok(marketPlanIssues(context,[{...newPicks[0],theme:'机器人'}]).length);
+assert.throws(()=>freezePlan('2026-11-03',nextSessions,[],newPicks,false));
+const newNow=new Date('2026-11-03T10:00:00+08:00'),newEarly=new Date('2026-11-03T08:50:00+08:00');
+const observedPlan=freezePlan('2026-11-03',nextSessions,[],newPicks,false,newEarly,context);
+context.evidence='changed draft';assert.equal(observedPlan.context.evidence,'dated close proof');
+const nextCalendar={...calendar,coveredThrough:'2026-11-03',sessions:[...nextSessions,'2026-11-03']};
+const evalContext={...context,permission:'evaluate',reason:'dated new evidence'};
+const newPlan=freezePlan('2026-11-03',nextSessions,[],newPicks,false,newEarly,evalContext);
+const newBook=defaultBook();newBook.repair.enabled=false;
+const nf={...f,candidatePlan:JSON.stringify(newPlan),[prefix+'supportTime']:'09:33',[prefix+'vwapEvidence']:'reclaimed VWAP',[prefix+'volumeEvidence']:'active demand'};
+assert.deepEqual(executionIssues('2026-11-03',nf,newBook,nextCalendar,newNow),[]);
+for(const patch of [{candidatePlan:JSON.stringify(observedPlan)},{intradayPause:'yes'},{[prefix+'supportTime']:'09:30'},{[prefix+'supportTime']:'09:36'},{[prefix+'vwapEvidence']:''},{candidatePlan:JSON.stringify({...newPlan,context:undefined})}])assert.ok(executionIssues('2026-11-03',{...nf,...patch},newBook,nextCalendar,newNow).length);
+assert.equal(readPlan(JSON.stringify({...newPlan,context:{...newPlan.context,asOf:'2026-10-30'}})),null);
+assert.equal(readPicks(JSON.stringify([{...newPicks[0],theme:5}])).length,0);
+assert.equal(readSamples(JSON.stringify([{...sample,supportTime:5}])).length,0);
+const ma10={...newPicks[0],strategy:'MA10'};assert.ok(planIssues([ma10,newPicks[1]],false,nextSessions,[]).length);assert.deepEqual(planIssues([{...ma10,ma10Confirmed:true,cycleEvidence:'dated cycle'},newPicks[1]],false,nextSessions,[]),[]);
+const studySample={...sample,strategy:'S0',entryStage:'confirmed',supportTime:'09:30:30',exitPlan:'written invalidation'};
+assert.equal(modelStudy([studySample,studySample,{...studySample,id:'paper',mode:'paper'},{...studySample,id:'early',entryStage:'early'},{...studySample,id:'badtime',supportTime:'09:34'},{...studySample,id:'ma10',strategy:'MA10'}])[0].count,1);
+assert.equal(modelStudy([{...studySample,strategy:'MA10'}])[1].count,1);
+const leads=themeLeads([{date:'2026-10-30',stocks:[stock('000001',1)]},{date:'2026-11-02',stocks:[stock('000002',1),{...stock('000003',2),industry:'fresh'},stock('000004',3)]}],'2026-11-02');assert.equal(leads.length,2);assert.equal(leads.find(s=>s.industry==='fresh').unseen,true);assert.equal(leads.find(s=>s.industry==='fixture').unseen,false);
+console.log('PASS: environment freeze, observe permission, excluded themes, MA10 isolation, support-before-trigger, pause, legacy protection and independent 20-sample studies');
