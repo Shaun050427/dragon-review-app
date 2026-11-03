@@ -21,7 +21,7 @@ const RealDate=Date;let fixed=new RealDate('2026-10-28T10:00:00+08:00').getTime(
 const {act}=await import('react'),{createRoot}=await import('react-dom/client');
 const {DashboardClient}=await import('../app/dashboard-client.tsx');
 const sessions=['2026-10-21','2026-10-22','2026-10-23','2026-10-26','2026-10-27'];
-const calendar={schemaVersion:1,source:'fixture',coveredFrom:sessions[0],coveredThrough:'2026-11-03',sessions:[...sessions,'2026-10-28','2026-10-29','2026-10-30','2026-11-02','2026-11-03']};
+const calendar={schemaVersion:1,source:'fixture',coveredFrom:sessions[0],coveredThrough:'2026-11-04',sessions:[...sessions,'2026-10-28','2026-10-29','2026-10-30','2026-11-02','2026-11-03','2026-11-04']};
 const picks=['000001','000002'].map((code,i)=>({code,name:'候选'+(i+1),queue:'A',strategy:'S1',low:'7',high:'8',trigger:'stop then H',abandon:'sector fail',coreEvidence:'proof',liquidityConfirmed:true,ma5Confirmed:false,rotationEvidence:''}));
 const plan=freezePlan('2026-10-28',sessions,[],picks,false,new RealDate('2026-10-27T20:00:00+08:00'));
 const book=defaultBook();book.repair.enabled=false;book.rules[0].required=true; // Legacy required flags must no longer add a daily gate.
@@ -29,10 +29,11 @@ const fields={candidatePlan:JSON.stringify(plan),candidateDraft:JSON.stringify(p
 for(const [k,v] of Object.entries({auction:'yes',auctionEvidence:'auction proof',sector:'yes',sectorEvidence:'peers proof',low:'7.5',high:'7.6',price:'7.7',time:'09:35:00',stopped:'yes',breakout:'yes',evidence:'minute proof'}))fields['execution_000001_'+k]=v;
 let doc={schemaVersion:7,updatedAt:'fixture',unknownRoot:{keep:true},disciplineBook:book,records:{'2026-11-03':{payload:{fields:{...fields,candidatePlan:'',candidateDraft:JSON.stringify(picks.map(p=>({...p,theme:'fixture新题材',supportPlan:'VWAP和量能确认',exitPlan:'失效退出'}))),marketTemperature:'震荡/分歧',capitalStyle:'低位新题材',marketContextEvidence:'fixture dated close'},checks:{}},updatedAt:'fixture'},'2026-10-28' :{payload:{fields,checks:{}},updatedAt:'fixture'},'2026-10-27':{payload:{fields:{sentinel:'old-date'},checks:{}},updatedAt:'fixture'}}},sha='sha-0',writes=0,holdWrite=null;
 const response=v=>({ok:true,status:200,json:async()=>structuredClone(v)});
+let nov3Published=false;
 globalThis.fetch=async(input,init={})=>{const url=String(input);if(url.startsWith('https://api.github.com/')){
  if(url.includes('/contents/')){if(init.method==='PUT'){const body=JSON.parse(init.body);assert.equal(body.sha,sha);if(holdWrite){const wait=holdWrite;holdWrite=null;await wait;}doc=JSON.parse(Buffer.from(body.content,'base64').toString('utf8'));sha='sha-'+(++writes);return response({content:{sha},commit:{sha:'commit-'+writes}});}return response({sha,content:Buffer.from(JSON.stringify(doc)).toString('base64')});}return response({default_branch:'main'});
- }if(url.includes('trading-calendar.json'))return response(calendar);
- const date=url.match(/daily\/\d{4}\/\d{2}\/(\d{4}-\d{2}-\d{2})\.json/)?.[1];if(date)return response({schemaVersion:1,tradeDate:date,stocks:[sessions.at(-1),'2026-11-02'].includes(date)?picks.map(p=>({code:p.code,name:p.name,industry:'fixture',boards:2,turnover:2e8})):[]});
+ }if(url.includes('session-calendar.json'))return response(calendar);if(url.includes('trading-calendar.json'))return response(calendar);
+ const date=url.match(/daily\/\d{4}\/\d{2}\/(\d{4}-\d{2}-\d{2})\.json/)?.[1];if(date==='2026-11-03')return nov3Published?response({schemaVersion:1,tradeDate:date,stocks:picks.map((p,i)=>({...p,code:'00000'+(i+3),name:'最新候选'+(i+1),industry:'新行业',boards:2,turnover:2e8}))}):{ok:false,status:404};if(date)return response({schemaVersion:1,tradeDate:date,stocks:[sessions.at(-1),'2026-11-02'].includes(date)?picks.map(p=>({code:p.code,name:p.name,industry:'fixture',boards:2,turnover:2e8})):[]});
  return {ok:false,status:404,json:async()=>({})};};
 w.localStorage.setItem('ashare_github_config_v1',JSON.stringify({owner:'fixture',repo:'private-fixture',branch:'main',path:'records.json',device:'test'}));w.localStorage.setItem('ashare_github_token_v1','dummy-test-token');
 const intervals=[];const realInterval=w.setInterval.bind(w);w.setInterval=(fn,ms,...args)=>{intervals.push({fn,ms});return realInterval(fn,ms,...args);};
@@ -111,6 +112,21 @@ try {
  await click(button('暂停新增交易'));assert.ok(button('记录首次合格信号').disabled);await click(button('恢复新增判断'));await click(button('记录首次合格信号'));await click(button('立即提交'));
  const newSignal=JSON.parse(doc.records['2026-11-03'].payload.fields.executionSamples)[0];assert.equal(newSignal.supportTime,'09:33:00');assert.equal(newSignal.entryStage,'confirmed');assert.equal(newSignal.exitPlan,'失效退出');
  await click(button('返回盘前候选'));await act(async()=>{await intervals.find(x=>x.ms===1000).fn();});assert.ok(button('冻结盘前名单').disabled);assert.ok(fieldByText('新增交易权限').matches(':disabled'));
+
+ // After the close, Nov4 requires Nov3, even when the newest published archive is Nov2.
+ fixed=new RealDate('2026-11-03T19:00:00+08:00').getTime();
+ await input(w.document.querySelector('#trade-date'),'2026-11-04');await settle();
+ assert.ok(w.document.body.textContent.includes('应读取 2026-11-03'));
+ assert.equal(w.document.querySelectorAll('.candidate-pool-table tbody tr').length,0);
+ assert.ok(button('冻结盘前名单').disabled);
+ await input(fieldByText('A池成交额下限 · 万元（可调整）'),'5000');
+ nov3Published=true;await act(async()=>{await intervals.filter(x=>x.ms===60000).at(-1).fn();});await settle();
+ assert.equal(w.document.querySelectorAll('.candidate-pool-table tbody tr').length,2);
+ assert.ok(w.document.querySelector('.candidate-pool-table').textContent.includes('最新候选1'));
+ assert.equal(w.document.querySelector('.candidate-pool-table').textContent.includes('候选1 000001'),false);
+ assert.ok(w.document.body.textContent.includes('已核对准备日 2026-11-03'));
+ assert.equal(fieldByText('A池成交额下限 · 万元（可调整）').value,'5000');
+ console.log('PASS: Nov4 rejects missing Nov3 archive, automatically refreshes to newly published Nov3 candidates and preserves edits');
  console.log('PASS: Nov3 environment and candidate freeze, observe gate, audited permission update, support evidence, pause/resume and post-auction lock');
  console.log('PASS: Dashboard rule CRUD, native drag and case integrity, cross-date book, synthetic two-board list, first-signal dedup, unknown/root/date preservation, remote conflicts and in-flight edits; dense knowledge CRUD, isolated drag queues, cross-day risk summary and empty-list persistence');
 } finally {await act(async()=>node.unmount());w.close();globalThis.Date=RealDate;}

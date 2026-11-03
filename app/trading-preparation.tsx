@@ -9,25 +9,36 @@ import { buildPool, freezePlan, jsonList, pickFrom, planIssues, preparationSessi
 import { MarketPreparation } from "@/app/market-preparation";
 import { marketContext, REVIEW_VERSION } from "@/lib/market-preparation";
 import { marketPlanIssues } from "@/lib/candidate-workflow";
+import { preparationWindow } from "@/lib/preparation-freshness";
 const ROOT="https://raw.githubusercontent.com/Shaun050427/dragon-review-app/market-data/";
 const path=(date:string)=>`${date.slice(0,4)}/${date.slice(5,7)}/${date}.json`;
-async function get(uri:string,signal:AbortSignal) { const r=await fetch(ROOT+uri,{cache:"no-store",signal:AbortSignal.any([signal,AbortSignal.timeout(12000)])});if(!r.ok)throw new Error(String(r.status));return r.json(); }
+async function get(uri:string,signal:AbortSignal) { const r=await fetch(ROOT+uri+`?v=${Date.now()}`,{cache:"no-store",signal:AbortSignal.any([signal,AbortSignal.timeout(12000)])});if(!r.ok)throw new Error(String(r.status));return r.json(); }
 export function TradingPreparation({date,fields:f,onChange,onCalendar}:{date:string;fields:Fields;onChange:(k:string,v:string)=>void;onCalendar:(v:TradingCalendar|null)=>void}) {
-  const [state,setState]=useState<{date:string;calendar:TradingCalendar|null;days:FunnelDay[];radar:RadarSnapshot|null;sessions:string[];error:string}>({date:"",calendar:null,days:[],radar:null,sessions:[],error:""});
+  const [state,setState]=useState<{date:string;calendar:TradingCalendar|null;days:FunnelDay[];radar:RadarSnapshot|null;sessions:string[];expected:string;freshness:string;error:string}>({date:"",calendar:null,days:[],radar:null,sessions:[],expected:"",freshness:"",error:""});
   const [now,setNow]=useState(()=>Date.now());
   useEffect(()=>{const id=window.setInterval(()=>setNow(Date.now()),1000);return()=>window.clearInterval(id);},[]);
   const [loading,setLoading]=useState(false),[refresh,setRefresh]=useState(0),[filter,setFilter]=useState(date>=REVIEW_VERSION?"new":"A");
+  useEffect(()=>{
+    const refresh=()=>{if(document.visibilityState!=="hidden")setRefresh(v=>v+1);};
+    const id=window.setInterval(refresh,60000);
+    window.addEventListener("focus",refresh);document.addEventListener("visibilitychange",refresh);
+    return()=>{window.clearInterval(id);window.removeEventListener("focus",refresh);document.removeEventListener("visibilitychange",refresh);};
+  },[]);
   const [manual,setManual]=useState({code:"",name:"",industry:"",date:"",evidence:""}),[message,setMessage]=useState("");
   useEffect(()=>{const c=new AbortController(); const run=async()=>{setLoading(true);try {
-    const calendar=readCalendar(await get("trading-calendar.json",c.signal));if(!calendar)throw new Error("交易日历格式无效");
-    const sessions=preparationSessions(date,calendar,f.preparationAsOf||undefined),last=sessions.at(-1);if(!last)throw new Error("没有执行日前的已知交易日");
+    const calendars=await Promise.all([get("session-calendar.json",c.signal).then(readCalendar).catch(()=>null),get("trading-calendar.json",c.signal).then(readCalendar).catch(()=>null)]);
+    const calendar=calendars[0]||calendars[1];if(!calendar)throw new Error("交易日历格式无效");
+    const window=preparationWindow(date,calendar,new Date(),f.preparationAsOf||undefined),{sessions,expected}=window,last=sessions.at(-1);
+    if(!last){if(!c.signal.aborted){setState({date,calendar,days:[],radar:null,sessions:[],expected,freshness:window.warning,error:""});onCalendar(calendar);}return;}
+
     const [archives,radar]=await Promise.all([Promise.all(sessions.map(async d=>{try{return readArchive(await get("daily/"+path(d),c.signal),d);}catch{return null;}})),get("radar/"+path(last),c.signal).then(v=>readRadar(v,last)).catch(()=>null)]);
-    if(!c.signal.aborted){setState({date,calendar,days:archives.filter((v):v is FunnelDay=>v!==null),radar,sessions,error:""});onCalendar(calendar);}
-  }catch(e){if(!c.signal.aborted){setState({date,calendar:null,days:[],radar:null,sessions:[],error:e instanceof Error?e.message:"采集失败"});onCalendar(null);}}finally{if(!c.signal.aborted)setLoading(false);}};void run();return()=>c.abort();},[date,f.preparationAsOf,refresh,onCalendar]);
+    if(!c.signal.aborted){setState({date,calendar,days:archives.filter((v):v is FunnelDay=>v!==null),radar,sessions,expected,freshness:window.warning,error:""});onCalendar(calendar);}
+  }catch(e){if(!c.signal.aborted){setState({date,calendar:null,days:[],radar:null,sessions:[],expected:"",freshness:"",error:e instanceof Error?e.message:"采集失败"});onCalendar(null);}}finally{if(!c.signal.aborted)setLoading(false);}};void run();return()=>c.abort();},[date,f.preparationAsOf,refresh,onCalendar]);
   const active=state.date===date, sessions=active?state.sessions:[],days=active?state.days:[],radar=active?state.radar:null,last=sessions.at(-1)||"", missing=sessions.filter(d=>!days.some(x=>x.date===d));
   const cores=readCores(f.manualCores);
   const threshold=Number(f.poolLiquidityWan||10000)*10000;
-  const pool=buildPool(sessions,days,radar,Number.isFinite(threshold)&&threshold>=0?threshold:1e8,cores);
+  const ready=Boolean(active&&!state.freshness&&last&&last===state.expected&&days.some(d=>d.date===last));
+  const pool=ready?buildPool(sessions,days,radar,Number.isFinite(threshold)&&threshold>=0?threshold:1e8,cores):[];
   const picks=readPicks(f.candidateDraft);
   const plan=readPlan(f.candidatePlan), validPlan=plan?.executionDate===date?plan:null;
   const locked=Boolean(validPlan?.kind==="premarket" && now>=Date.parse(`${date}T09:25:00+08:00`));
@@ -35,10 +46,11 @@ export function TradingPreparation({date,fields:f,onChange,onCalendar}:{date:str
   const patch=(code:string,v:Partial<CandidatePick>)=>setPicks(picks.map(p=>p.code===code?{...p,...v}:p));
   const calendarConfirmed=Boolean(state.calendar?.sessions.includes(date) || f.preparationSessionConfirmed==="yes");
   const context=marketContext(f,date,last);
-  const issues=[...planIssues(picks,f.preparationFlat==="yes",sessions,missing),...(date>=REVIEW_VERSION?marketPlanIssues(context,picks):[])];
+  const issues=[...(!ready?[state.freshness||`${state.expected||"最新已收盘日"} 盘后归档尚未发布，不能沿用旧候选池`]:[]),...planIssues(picks,f.preparationFlat==="yes",sessions,missing),...(date>=REVIEW_VERSION?marketPlanIssues(context,picks):[])];
   const shown=filter==="new"?pool.filter(s=>days.find(d=>d.date===last)?.stocks.some(x=>x.code===s.code&&x.boards<=2)):pool.filter(s=>filter==="all"||filter==="C"?(filter==="all"||!s.queue):s.queue===filter);
   function freeze() {
     if(validPlan?.kind==="premarket" && new Date().getTime()>=Date.parse(`${date}T09:25:00+08:00`)){setMessage("9:25后盘前名单锁定，不能改写。");return;}
+    if(!ready){setMessage("最新准备日数据尚未就绪，请等待自动刷新。");return;}
     if(!calendarConfirmed){setMessage("请先核对执行日与准备日的交易日历。");return;}
     if(last!==preparationSessions(date,state.calendar).at(-1)){setMessage("截止日早于最近已知交易日；请刷新完整窗口后准备。");return;}
     if(picks.some(p=>!pool.some(s=>s.code===p.code&&s.liquidity!=="excluded"))){setMessage("名单含池外股票或流动性低于筛选阈值，请重新筛选。");return;}
@@ -47,11 +59,12 @@ export function TradingPreparation({date,fields:f,onChange,onCalendar}:{date:str
       setMessage(next.kind==="premarket"?"盘前名单已冻结；请提交保存。":"已记录为盘后补录，仅供复盘，不能授权当前实盘。");
     }catch(e){setMessage(e instanceof Error?e.message:"冻结失败");}
   }
-  return <div className="workflow space-y-4 candidate-preparation">{date>=REVIEW_VERSION&&<MarketPreparation date={date} sourceDate={last} fields={f} onChange={onChange} days={days} complete={sessions.length===5&&!missing.length} locked={locked}/>}<Card><CardHeader className="history-head"><div><CardTitle>盘前有限观察池 · A / B / C</CardTitle><p>执行日 {date} · 准备日 {last||"待核"}。前一晚确定2—3只；9:25核预期差；9:30后只验证预定买点。先把顶部交易日切到要执行的那一天。</p></div><Button variant="outline" onClick={()=>setRefresh(v=>v+1)} disabled={loading}>刷新候选池</Button></CardHeader><CardContent className="space-y-4">
+  return <div className="workflow space-y-4 candidate-preparation">{date>=REVIEW_VERSION&&<MarketPreparation date={date} sourceDate={last} fields={f} onChange={onChange} days={days} complete={ready&&sessions.length===5&&!missing.length} locked={locked}/>}<Card><CardHeader className="history-head"><div><CardTitle>盘前有限观察池 · A / B / C</CardTitle><p>执行日 {date} · 准备日 {last||"待核"}。前一晚确定2—3只；9:25核预期差；9:30后只验证预定买点。先把顶部交易日切到要执行的那一天。</p></div><Button variant="outline" onClick={()=>setRefresh(v=>v+1)} disabled={loading}>刷新候选池</Button></CardHeader><CardContent className="space-y-4">
+    {!loading&&!ready&&<div className="notice-row" role="alert"><div><strong>候选池未就绪 · 不使用旧日期代替</strong><p>{state.freshness||`应读取 ${state.expected||"最新已收盘交易日"} 的盘后归档，文件尚未发布。`}</p><p>页面每60秒自动检查，回到页面也会刷新。后台收盘后多轮补采；刷新按钮只重新取数，不会把旧文件变成新行情。</p>{f.preparationAsOf&&<Button variant="outline" onClick={()=>onChange("preparationAsOf","")}>恢复自动准备日</Button>}<a href="https://github.com/Shaun050427/dragon-review-app/actions/workflows/limit-review.yml" target="_blank" rel="noreferrer">查看采集进度 / 手动补采</a></div></div>}
     <div className="workflow-queues"><div><b>A · 2进3分歧池</b><p>准备日所有2板股。流动性过滤后制定深水反核预案。</p><strong>{pool.filter(s=>s.queue==="A").length} 只</strong></div><div><b>B · MA5 / MA10首次分歧池</b><p>近期3板以上或活跃核心，首次回踩MA5或MA10，分别验证。未知事实保留待核。</p><strong>{pool.filter(s=>s.queue==="B").length} 只</strong></div><div><b>C · 跨题材轮动池</b><p>独立涨停与活跃行业仅作线索。弱势背景、相对强度及接替主线需要人工验证。</p><strong>{new Set(pool.map(s=>s.industry).filter(Boolean)).size} 个行业线索</strong></div></div>
     {loading&&<p role="status">读取执行日前5个真实交易日归档…</p>}{active&&state.error&&<p role="alert">{state.error}</p>}
     <p className="premium-source">窗口：{sessions.join("、")||"日历待核"}。涨停/炸板归档 {days.length}/5。{missing.length?`缺少 ${missing.join("、")}；不能冻结可执行名单。`:""}日线快照：{radar?`${last}（${radar.stocks.filter(s=>!s.error&&s.dataDate===last).length}/${radar.stocks.length}只有效）`:"缺失，均线首次触线待核"}。不以自然日、文件个数或未来行情代替交易日。</p>
-    <p className="premium-source">日期说明：11月2日盘后数据用于11月3日执行，请将顶部交易日设为11月3日。若选11月2日，系统只使用10月30日及之前的数据，避免未来信息。</p><div className="form-grid two"><label className="field"><span>准备截止日（可留空取执行日前最近交易日）</span><Input type="date" value={f.preparationAsOf||""} onChange={e=>onChange("preparationAsOf",e.target.value)}/></label><label className="field"><span>A池成交额下限 · 万元（可调整）</span><Input type="number" min="0" value={f.poolLiquidityWan||"10000"} onChange={e=>onChange("poolLiquidityWan",e.target.value)}/></label></div>
+    <p className="premium-source">日期说明：执行日 {date} 应使用 {state.expected||"待核"} 收盘数据。后台自动采集与页面自动刷新分别运行；旧日期数据缺口会明确提示。{ready?`已核对准备日 ${last}。`:"最新候选暂不展示。"}</p><div className="form-grid two"><label className="field"><span>准备截止日（可留空取执行日前最近交易日）</span><Input type="date" value={f.preparationAsOf||""} onChange={e=>onChange("preparationAsOf",e.target.value)}/></label><label className="field"><span>A池成交额下限 · 万元（可调整）</span><Input type="number" min="0" value={f.poolLiquidityWan||"10000"} onChange={e=>onChange("poolLiquidityWan",e.target.value)}/></label></div>
     {!state.calendar?.sessions.includes(date)&&<label><input type="checkbox" checked={f.preparationSessionConfirmed==="yes"} onChange={e=>onChange("preparationSessionConfirmed",e.target.checked?"yes":"no")}/> 已在交易所日历核对：{date} 是交易日，{last||"所选准备日"} 是其上一交易日</label>}
     <div className="workflow-actions">{[["new","首板 / 二板线索"],["A","A · 二板"],["B","B · MA5 / MA10"],["C","C · 轮动线索"],["all","完整有限池"]].map(([v,t])=><Button key={v} size="sm" variant={filter===v?"default":"outline"} onClick={()=>setFilter(v)}>{t}</Button>)}</div>
     {filter==="C"&&<p className="premium-source">{[...new Set(pool.map(s=>s.industry).filter(Boolean))].join("、")||"暂无行业线索"}。行业字段不是题材强度评分，选择后须补充轮动证据。</p>}
