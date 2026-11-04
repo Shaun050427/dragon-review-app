@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { listRevisions, pullDocument, pushDocument, verifyRepository, type GitHubConfig, type GitHubRevision, type ReviewDocument } from "@/lib/github-store";
 import { LowAbsorptionFunnel } from "@/app/low-absorption-funnel";
 import { LimitReview } from "@/app/limit-review";
+import { CrossMarketObservation } from "@/app/cross-market-observation";
 import { EffectObserver } from "@/app/effect-observer";
 import { StrategyWorkbench } from "@/app/strategy-workbench";
 import { ExitReview, HoldingExecution } from "@/app/liquidity-discipline";
@@ -404,7 +405,7 @@ export function DashboardClient() {
       </section></details>
       {accountIssues.length > 0 && <div className="notice-row"><div><strong>账户风险闸门：暂不新增交易</strong><p>{accountIssues.join("；")}。请在“盘前候选”的“账户与风险设置”中核查。</p></div></div>}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="main-tabs" data-compact={!showLegacy}><TabsList className="tab-list"><TabsTrigger value="effect">市场环境</TabsTrigger><TabsTrigger value="funnel">盘前候选</TabsTrigger><TabsTrigger value="opening">盘中执行</TabsTrigger><TabsTrigger value="discipline">交易纪律</TabsTrigger><TabsTrigger value="knowledge">操盘知识</TabsTrigger><TabsTrigger value="risk">交易风险</TabsTrigger>{showLegacy && <><TabsTrigger value="system">旧·策略风控</TabsTrigger><TabsTrigger value="review">旧·盘后复盘</TabsTrigger><TabsTrigger value="limit">旧·涨停图</TabsTrigger><TabsTrigger value="history">旧·历史统计</TabsTrigger></>}</TabsList>
-        <TabsContent value="effect"><EffectObserver fields={f} onChange={updateField} recent={recentEffectDays} /></TabsContent>
+        <TabsContent value="effect"><CrossMarketObservation key={date} date={date} fields={f} onChange={updateField}/><EffectObserver fields={f} onChange={updateField} recent={recentEffectDays} /></TabsContent>
         <TabsContent value="funnel"><TradingPreparation key={date} date={date} fields={f} onChange={updateField} onCalendar={setCalendar}/><ExecutionAccountSettings fields={f} onChange={updateField}/><Button variant="outline" onClick={()=>setShowLegacy(v=>!v)}>{showLegacy?"收起旧版研究":"展开旧版雷达与完整复盘"}</Button>{showLegacy && <LowAbsorptionFunnel date={date} fields={f} onChange={updateField} summary={{ days: records.length, winRate: String(stats.winRate), pnl: stats.totalPnl }} onExport={exportCloud} onToggleLegacy={() => setShowLegacy((v) => !v)} legacyVisible={showLegacy} />}</TabsContent>
         <TabsContent value="discipline"><TradingDiscipline book={book} onChange={updateBook} dirty={bookDirty} onSave={()=>void save()} conflict={Boolean(bookConflict)} onLoadRemote={()=>{if(bookConflict)loadBook(bookConflict);}} onOverwrite={()=>void save(false,true)} date={date} calendar={calendar} samples={readSamples(f.executionSamples)}/></TabsContent>
         <TabsContent value="knowledge"><TradingKnowledge key="notes" section="notes" book={book} onChange={updateBook} dirty={bookDirty || dirty} onSave={()=>void save()} conflict={Boolean(bookConflict)} onLoadRemote={()=>{if(bookConflict)loadBook(bookConflict);}} onOverwrite={()=>void save(false,true)} date={date} riskSummary={f.knowledgeRiskSummary||""} onRiskSummary={value=>updateField("knowledgeRiskSummary",value)}/></TabsContent>

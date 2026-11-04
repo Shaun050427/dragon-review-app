@@ -1,13 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useEffect,useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { newId, type DisciplineBook } from "@/lib/trading-discipline";
-import { defaultKnowledge, moveKnowledge, type KnowledgeItem, type KnowledgeSection } from "@/lib/trading-knowledge";
+import { defaultKnowledge, addReviewKnowledge, moveKnowledge, type KnowledgeItem, type KnowledgeSection } from "@/lib/trading-knowledge";
 
 export function TradingKnowledge({book,onChange,dirty,onSave,conflict,onLoadRemote,onOverwrite,section,date,riskSummary,onRiskSummary}:{section:KnowledgeSection;book:DisciplineBook;onChange:(book:DisciplineBook)=>void;dirty:boolean;onSave:()=>void;conflict:boolean;onLoadRemote:()=>void;onOverwrite:()=>void;date:string;riskSummary:string;onRiskSummary:(value:string)=>void}) {
   const knowledge=book.knowledge??defaultKnowledge();
+  useEffect(()=>{if(section==="notes"&&!knowledge.review1104Applied)onChange({...book,knowledge:addReviewKnowledge(knowledge)});},[book,knowledge,onChange,section]);
   const [editing,setEditing]=useState("");
   const [drag,setDrag]=useState<{section:KnowledgeSection;id:string}|null>(null);
   const [deleted,setDeleted]=useState<{section:KnowledgeSection;item:KnowledgeItem;index:number}|null>(null);
