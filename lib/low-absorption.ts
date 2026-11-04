@@ -1,5 +1,5 @@
 export type Fields = Record<string, string>;
-export type FunnelStock = { code: string; name: string; industry: string; boards: number; turnover?: number };
+export type FunnelStock = { code: string; name: string; industry: string; boards: number; turnover?: number; firstSeal?:string; lastSeal?:string; openCount?:number };
 export type FunnelDay = { date: string; stocks: FunnelStock[]; broken?: { code: string; name: string; industry: string }[] };
 export type TradingCalendar = { schemaVersion: 1; source: string; coveredFrom: string; coveredThrough: string; sessions: string[] };
 export type FunnelCandidate = { code: string; name: string; industry: string; maxBoards: number; lastBoard: string; age: number | null; missingAfter: number; limitCount10: number; leaderClass: LeaderClass };

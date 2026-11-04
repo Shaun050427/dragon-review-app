@@ -60,7 +60,7 @@ assert.equal(sameBook(empty,{...empty,updatedAt:'later'}),true);assert.equal(saf
 console.log('PASS: finite five-session pools, no future data, frozen timing, execution gates, repair limits, live/paper deviations, rule/case integrity');
 
 const { defaultKnowledge, validKnowledge, moveKnowledge } = await import('../lib/trading-knowledge.ts');
-const knowledge=defaultKnowledge();assert.equal(knowledge.notes.length,3);assert.equal(knowledge.risks.length,7);assert.ok(validKnowledge(knowledge));
+const knowledge=defaultKnowledge();assert.equal(knowledge.notes.length,5);assert.equal(knowledge.risks.length,7);assert.ok(validKnowledge(knowledge));
 assert.ok(readBook({...defaultBook(),knowledge}));assert.ok(readBook({...defaultBook(),knowledge:{notes:[],risks:[]}}));
 for(const malformed of [null,{notes:[null],risks:[]},{notes:[{id:'a',content:'x'},{id:'a',content:'y'}],risks:[]},{notes:[],risks:[{id:'x',content:4}]}]){assert.equal(validKnowledge(malformed),false);assert.equal(readBook({...defaultBook(),knowledge:malformed}),null);}
 const movedNotes=moveKnowledge(knowledge,'notes',knowledge.notes[0].id,knowledge.notes[2].id);assert.equal(movedNotes.notes[2].id,knowledge.notes[0].id);assert.deepEqual(movedNotes.risks,knowledge.risks);assert.equal(knowledge.notes[0].id,'tech-rebound');
@@ -106,3 +106,19 @@ assert.ok(preparationWindow('2026-11-04',fullCalendar,afterClose,'2026-11-02').w
 assert.equal(preparationWindow('2026-11-09',fullCalendar,new Date('2026-11-08T19:00:00+08:00')).expected,'2026-11-06');
 assert.equal(preparationWindow('2026-11-04',null,afterClose).sessions.length,0);
 console.log('PASS: expected preparation date is independent of archive availability; pre-close, historical, weekend and stale-calendar guards');
+
+const {readCrossSignals,signalFreshness,chinaTimestamp,validEvidence,readStyleReviews,styleReviewIssues}=await import('../lib/review-insights.ts');
+const {addReviewKnowledge}=await import('../lib/trading-knowledge.ts');
+const signal={...readCrossSignals()[0],observedAt:'2026-10-28T09:35',source:'fixture terminal',facts:'dated rise',maxAgeMinutes:'30'};
+assert.equal(signalFreshness(signal,now).status,'fresh');assert.equal(signalFreshness({...signal,observedAt:'2026-10-28T09:00'},now).status,'stale');assert.equal(signalFreshness({...signal,observedAt:'2026-10-28T11:00'},now).status,'future');assert.equal(signalFreshness({...signal,source:''},now).status,'pending');
+assert.ok(Number.isNaN(chinaTimestamp('2026-02-31T09:30')));assert.equal(readCrossSignals('[]').length,0);assert.equal(readCrossSignals('[null]').length,0);
+assert.ok(validEvidence({authenticity:'',position:'',seal:'',divergence:'',buyPoint:''}));assert.equal(validEvidence({authenticity:true}),false);
+const sr={id:'review',capturedAt:now.toISOString(),observedAt:'2026-10-28T09:33',method:'manual',source:'fixture snapshot',facts:'broad tech breakout',style:'趋势核心',code:p.code,afterExit:true,period:'fixture cycle',consensus:'fixture peers',chips:'fixture support',payoff:'fixture entry and exit',decision:'recheck',planCapturedAt:frozen.capturedAt,ruleSummary:'original frozen rules'};
+assert.equal(readStyleReviews(JSON.stringify([sr])).length,1);assert.deepEqual(styleReviewIssues(sr,'2026-10-28',now),[]);assert.ok(styleReviewIssues({...sr,payoff:''},'2026-10-28',now).length);
+assert.ok(executionIssues('2026-10-28',{...f,styleChangePending:'yes'},book,calendar,now).length);
+assert.ok(executionIssues('2026-10-28',{...f,styleReviewDecision:'observe'},book,calendar,now).length);
+const reevaluated={...f,styleReviewDecision:'recheck',styleReviews:JSON.stringify([sr])};assert.deepEqual(executionIssues('2026-10-28',reevaluated,book,calendar,now),[]);
+for(const patch of [{code:'999999'},{planCapturedAt:'different'},{payoff:''},{observedAt:'2026-10-28T11:00'},{observedAt:'2026-10-28T09:36'}])assert.ok(executionIssues('2026-10-28',{...reevaluated,styleReviews:JSON.stringify([{...sr,...patch}])},book,calendar,now).length);
+assert.equal(reevaluated.candidatePlan,f.candidatePlan);
+const legacyKnowledge={notes:[{id:'mine',content:'my edited note'}],risks:[]};const upgradedKnowledge=addReviewKnowledge(legacyKnowledge);assert.equal(upgradedKnowledge.notes.length,3);assert.equal(upgradedKnowledge.notes[0].content,'my edited note');assert.equal(addReviewKnowledge(upgradedKnowledge),upgradedKnowledge);assert.equal(addReviewKnowledge({...upgradedKnowledge,notes:[]}).notes.length,0);
+console.log('PASS: cross-market freshness and invalid timestamps; evidence unknowns; manual style audit, four-factor checks, frozen-plan/stock binding; one-time knowledge upgrade');

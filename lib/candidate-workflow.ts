@@ -1,25 +1,27 @@
 import type { Fields, FunnelDay, RadarSnapshot, TradingCalendar } from "./low-absorption";
 import { contextIssues, readContext, type MarketContext, REVIEW_VERSION } from "./market-preparation.ts";
+import {validEvidence,emptyEvidence,readStyleReviews,styleReviewIssues,chinaTimestamp,type CandidateEvidence} from "./review-insights.ts";
 import type { DisciplineBook } from "./trading-discipline";
 export type Queue = "A" | "B" | "C";
-export type PoolStock = { code: string; name: string; industry: string; maxBoards: number; sourceDate: string; reasons: string[]; queue: Queue | ""; liquidity: "pass" | "unknown" | "excluded"; ma5First: boolean; ma10First?: boolean };
+export type PoolStock = { code: string; name: string; industry: string; maxBoards: number; sourceDate: string; reasons: string[]; queue: Queue | ""; liquidity: "pass" | "unknown" | "excluded"; ma5First: boolean; ma10First?: boolean; sealEvidence?:string };
 export type ManualCore = { code: string; name: string; industry: string; date: string; evidence: string };
-export type CandidatePick = { code: string; name: string; queue: Queue; strategy: "S0" | "S1" | "S2" | "MA10"; low: string; high: string; trigger: string; abandon: string; coreEvidence: string; liquidityConfirmed: boolean; ma5Confirmed: boolean; rotationEvidence: string; theme?:string; supportPlan?:string; exitPlan?:string; cycleEvidence?:string; ma10Confirmed?:boolean };
+export type CandidatePick = { code: string; name: string; queue: Queue; strategy: "S0" | "S1" | "S2" | "MA10"; low: string; high: string; trigger: string; abandon: string; coreEvidence: string; liquidityConfirmed: boolean; ma5Confirmed: boolean; rotationEvidence: string; theme?:string; supportPlan?:string; exitPlan?:string; cycleEvidence?:string; ma10Confirmed?:boolean; evidence?:CandidateEvidence };
 export type FrozenPlan = { schemaVersion: 1; executionDate: string; sourceDate: string; sessions: string[]; missing: string[]; capturedAt: string; kind: "premarket" | "retrospective"; picks: CandidatePick[]; flat: boolean; context?:MarketContext };
 export type ExecutionSample = { id: string; code: string; name: string; strategy: string; capturedAt: string; signalTime: string; signalPrice: string; seenTime: string; seenPrice: string; fillTime: string; fillPrice: string; shares: string; evidence: string; review: string; mode: "paper" | "live"; newPosition: boolean; supportTime?:string; exitPlan?:string; entryStage?:string };
 export const chinaDate = (now = new Date()) => new Date(now.getTime() + 8 * 3600000).toISOString().slice(0, 10);
 export function jsonList<T>(raw: string | undefined): T[] { try { const v = JSON.parse(raw || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } }
-export function readPicks(raw: string | undefined): CandidatePick[] { return jsonList<CandidatePick>(raw).filter(p=>p && /^\d{6}$/.test(p.code) && typeof p.name === "string" && ["A","B","C"].includes(p.queue) && ["S0","S1","S2","MA10"].includes(p.strategy) && [p.low,p.high,p.trigger,p.abandon,p.coreEvidence,p.rotationEvidence].every(v=>typeof v === "string") && typeof p.liquidityConfirmed === "boolean" && typeof p.ma5Confirmed === "boolean" && [p.theme,p.supportPlan,p.exitPlan,p.cycleEvidence].every(v=>v===undefined||typeof v==="string") && (p.ma10Confirmed===undefined||typeof p.ma10Confirmed==="boolean")); }
+export function readPicks(raw: string | undefined): CandidatePick[] { return jsonList<CandidatePick>(raw).filter(p=>p && /^\d{6}$/.test(p.code) && typeof p.name === "string" && ["A","B","C"].includes(p.queue) && ["S0","S1","S2","MA10"].includes(p.strategy) && [p.low,p.high,p.trigger,p.abandon,p.coreEvidence,p.rotationEvidence].every(v=>typeof v === "string") && typeof p.liquidityConfirmed === "boolean" && typeof p.ma5Confirmed === "boolean" && [p.theme,p.supportPlan,p.exitPlan,p.cycleEvidence].every(v=>v===undefined||typeof v==="string") && (p.ma10Confirmed===undefined||typeof p.ma10Confirmed==="boolean") && (p.evidence===undefined||validEvidence(p.evidence))); }
 export function readCores(raw: string | undefined): ManualCore[] { return jsonList<ManualCore>(raw).filter(m=>m && [m.code,m.name,m.industry,m.date,m.evidence].every(v=>typeof v === "string")); }
 export function preparationSessions(executionDate: string, calendar: TradingCalendar | null, asOf?: string) { return calendar?.sessions.filter(d => d < executionDate && (!asOf || d <= asOf)).slice(-5) ?? []; }
 export function buildPool(sessions: string[], days: FunnelDay[], radar: RadarSnapshot | null, threshold = 1e8, manual: ManualCore[] = []) {
   const last = sessions.at(-1) || "", map = new Map<string, PoolStock>();
   const add = (code: string, name: string, industry: string, date: string, boards: number, reason: string) => {
     const prev = map.get(code);
-    map.set(code, { code, name, industry, sourceDate: date, maxBoards: Math.max(prev?.maxBoards || 0, boards), reasons: [...new Set([...(prev?.reasons || []), reason])], queue: prev?.queue || "", liquidity: prev?.liquidity || "unknown", ma5First: prev?.ma5First || false, ma10First:prev?.ma10First || false });
+    map.set(code, { code, name, industry, sourceDate: date, maxBoards: Math.max(prev?.maxBoards || 0, boards), reasons: [...new Set([...(prev?.reasons || []), reason])], queue: prev?.queue || "", liquidity: prev?.liquidity || "unknown", ma5First: prev?.ma5First || false, ma10First:prev?.ma10First || false,sealEvidence:prev?.sealEvidence||"" });
   };
   for (const day of [...days].filter(d => sessions.includes(d.date)).sort((a,b)=>a.date.localeCompare(b.date))) {
     for (const s of day.stocks) { add(s.code,s.name,s.industry,day.date,s.boards, `${day.date} ${s.boards}板`);
+      if(day.date===last){const p=map.get(s.code)!;p.sealEvidence=typeof s.firstSeal==="string"&&typeof s.lastSeal==="string"&&Number.isInteger(s.openCount)?`${day.date} 归档：首次封板 ${s.firstSeal}；最后封板 ${s.lastSeal}；炸板 ${s.openCount}次。后续承接待核。`:"";}
       if (day.date === last && s.boards === 2) { const p = map.get(s.code)!; p.queue = "A"; p.liquidity = s.turnover == null ? "unknown" : s.turnover < threshold ? "excluded" : "pass"; }
     }
     for (const s of day.broken || []) add(s.code,s.name,s.industry,day.date,0,`${day.date} 炸板（不等于连板断板）`);
@@ -50,7 +52,7 @@ export function buildPool(sessions: string[], days: FunnelDay[], radar: RadarSna
   }
   return [...map.values()].sort((a,b)=>Number(b.queue === "A")-Number(a.queue === "A") || b.maxBoards-a.maxBoards || a.code.localeCompare(b.code));
 }
-export function pickFrom(s: PoolStock): CandidatePick { return { code:s.code,name:s.name,queue:s.queue || "C",strategy:s.queue === "B" ? s.ma5First?"S0":"MA10" : "S1",low:"",high:"",trigger:"",abandon:"",coreEvidence:"",liquidityConfirmed:s.liquidity === "pass",ma5Confirmed:s.ma5First,rotationEvidence:"" }; }
+export function pickFrom(s: PoolStock): CandidatePick { return { code:s.code,name:s.name,queue:s.queue || "C",strategy:s.queue === "B" ? s.ma5First?"S0":"MA10" : "S1",low:"",high:"",trigger:"",abandon:"",coreEvidence:"",liquidityConfirmed:s.liquidity === "pass",ma5Confirmed:s.ma5First,rotationEvidence:"",evidence:{...emptyEvidence(),seal:s.sealEvidence||""} }; }
 export function planIssues(picks: CandidatePick[], flat: boolean, sessions: string[], missing: string[]) {
   const out: string[] = [];
   if (sessions.length !== 5 || new Set(sessions).size !== 5 || missing.length) out.push("需5个真实交易日且归档完整");
@@ -82,6 +84,7 @@ export function readPlan(raw: string | undefined): FrozenPlan | null {
     if (!p || p.schemaVersion !== 1 || !/^\d{4}-\d{2}-\d{2}$/.test(p.executionDate) || !Array.isArray(p.sessions) || p.sessions.length !== 5 || !p.sessions.every((d,i)=>typeof d === "string" && d < p.executionDate && (!i || d > p.sessions[i-1])) || p.sourceDate !== p.sessions.at(-1) || !Array.isArray(p.missing) || !Array.isArray(p.picks) || typeof p.flat !== "boolean" || !["premarket","retrospective"].includes(p.kind) || !Number.isFinite(Date.parse(p.capturedAt))) return null;
     if (!p.picks.every(x=>x && /^\d{6}$/.test(x.code) && typeof x.name === "string" && ["A","B","C"].includes(x.queue) && ["S0","S1","S2","MA10"].includes(x.strategy) && [x.low,x.high,x.trigger,x.abandon,x.coreEvidence,x.rotationEvidence].every(v=>typeof v === "string"))) return null;
     if(p.picks.some(x=>[x.theme,x.supportPlan,x.exitPlan,x.cycleEvidence].some(v=>v!==undefined&&typeof v!=="string")||(x.ma10Confirmed!==undefined&&typeof x.ma10Confirmed!=="boolean")))return null;
+    if(p.picks.some(x=>x.evidence!==undefined&&!validEvidence(x.evidence)))return null;
     if(p.context!==undefined&&(!readContext(p.context)||p.context.asOf!==p.sourceDate))return null;
     return p;
   } catch { return null; }
@@ -103,7 +106,14 @@ export function executionIssues(date: string, f: Fields, book: DisciplineBook, c
     if(p.context.permission!=="evaluate")issues.push("冻结环境仅允许观察或模拟，不能授权实盘");
     if(marketPlanIssues(p.context,p.picks).length)issues.push("冻结市场环境或候选预案不完整");
   }else if(date>=REVIEW_VERSION)issues.push("旧版冻结名单缺少市场环境，请在盘前重新准备");
+  if(f.styleChangePending==="yes")issues.push("已人工标记市场环境改变，需先保存资金风格复核");
+  if(f.styleReviewDecision&&f.styleReviewDecision!=="recheck")issues.push("资金风格复核为观察或放弃，暂停新增判断");
   const pick=p.picks.find(x=>x.code===f.plannedCode); if (!pick) return [...issues,"所选股票不在冻结名单"];
+  if(f.styleReviewDecision==="recheck"){
+    const latest=readStyleReviews(f.styleReviews).at(-1);
+    if(latest&&chinaTimestamp(`${date}T${f[`execution_${pick.code}_time`]||""}`)<chinaTimestamp(latest.observedAt))issues.push("首次触发早于环境变化，需按原冻结规则重新确认变化后的买点");
+    if(!latest||latest.decision!=="recheck"||latest.code!==pick.code||latest.planCapturedAt!==p.capturedAt||styleReviewIssues(latest,date,now).length)issues.push("重新评价未对应所选候选及原冻结版本，池外标的仅供研究");
+  }
   if (f.executionCandidate !== pick.name) issues.push("执行候选必须与冻结名单所选股票一致");
   const x=(key:string)=>f[`execution_${pick.code}_${key}`] || "";
   if (x("auction")!=="yes" || !x("auctionEvidence").trim()) issues.push("9:25预期差、同伴与赔率待核");

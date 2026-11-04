@@ -45,7 +45,7 @@ const button=(text)=>buttons(text)[0];
 async function input(el,value){assert.ok(el,'input target');await act(async()=>{const proto=el instanceof w.HTMLTextAreaElement?w.HTMLTextAreaElement.prototype:w.HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(el,value);el.dispatchEvent(new w.Event('input',{bubbles:true}));el.dispatchEvent(new w.Event('change',{bubbles:true}));});}
 try {
  await act(async()=>{node.render((await import('react')).createElement(DashboardClient));});await settle();assert.ok(w.document.body.textContent.includes('盘前有限观察池'));assert.equal(button('今晚计划'),undefined);assert.ok(w.document.body.textContent.includes('账户与风险设置'));
- assert.equal(w.document.querySelectorAll('.workflow tbody tr').length,2);
+ assert.equal(w.document.querySelectorAll('.candidate-pool-table tbody tr').length,2);
  await click(button('交易纪律'));assert.equal(w.document.querySelectorAll('.compact-rule').length,7);
  assert.equal(w.document.querySelectorAll('.discipline-list input[type="checkbox"]').length,0);
  assert.equal(w.document.querySelectorAll('.discipline-list textarea').length,0); // Read view, not seven permanent forms.
@@ -74,22 +74,22 @@ try {
  // Knowledge shares durable book storage, with independently ordered risk notes.
  await click(button('操盘知识'));assert.equal(w.document.querySelectorAll('[role="tab"]').length,6);
  const noteGrid=()=>w.document.querySelector('.knowledge-grid[data-section="notes"]'),riskGrid=()=>w.document.querySelector('.knowledge-grid[data-section="risks"]');
- assert.equal(noteGrid().children.length,3);assert.equal(riskGrid(),null);
+ assert.equal(noteGrid().children.length,5);assert.equal(riskGrid(),null);
  assert.equal(w.document.querySelectorAll('.knowledge-grid textarea').length,0);
  assert.ok(noteGrid().textContent.includes('七成可用资金'));assert.ok(noteGrid().textContent.includes('哈药、精华'));
- await click(button('增加知识点'));await input(w.document.querySelector('textarea[aria-label="知识点内容"]'),'自定义知识\n第二行内容');assert.equal(noteGrid().children.length,4);
+ await click(button('增加知识点'));await input(w.document.querySelector('textarea[aria-label="知识点内容"]'),'自定义知识\n第二行内容');assert.equal(noteGrid().children.length,6);
  const knowledgeTransfer={value:'',getData(){return this.value;},setData(_k,v){this.value=v;}};
- await act(async()=>{const start=new w.Event('dragstart',{bubbles:true});Object.defineProperty(start,'dataTransfer',{value:knowledgeTransfer});noteGrid().querySelectorAll('.knowledge-drag')[3].dispatchEvent(start);const drop=new w.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(drop,'dataTransfer',{value:knowledgeTransfer});noteGrid().children[0].dispatchEvent(drop);});
+ await act(async()=>{const start=new w.Event('dragstart',{bubbles:true});Object.defineProperty(start,'dataTransfer',{value:knowledgeTransfer});noteGrid().querySelectorAll('.knowledge-drag')[5].dispatchEvent(start);const drop=new w.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(drop,'dataTransfer',{value:knowledgeTransfer});noteGrid().children[0].dispatchEvent(drop);});
  await click(button('完成编辑'));assert.ok(noteGrid().children[0].textContent.includes('自定义知识'));
  await click(button('交易风险'));assert.equal(noteGrid(),null);assert.equal(riskGrid().children.length,7);const priorRisk=riskGrid().children[0].textContent;
  await act(async()=>{const drop=new w.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(drop,'dataTransfer',{value:knowledgeTransfer});riskGrid().children[0].dispatchEvent(drop);});assert.equal(riskGrid().children[0].textContent,priorRisk);await click(button('操盘知识')); // A drag cannot move an experience into the risk queue.
  await click(button('保存知识修改'));assert.equal(doc.disciplineBook.knowledge.notes[0].content,'自定义知识\n第二行内容');assert.equal(doc.disciplineBook.knowledge.risks.length,7);assert.equal(doc.disciplineBook.rules[0].title,'保存期间第二稿');
- await click([...noteGrid().querySelectorAll('button')].find(b=>b.textContent==='删除'));assert.equal(noteGrid().children.length,3);await click(button('撤销上次删除'));assert.equal(noteGrid().children.length,4);
+ await click([...noteGrid().querySelectorAll('button')].find(b=>b.textContent==='删除'));assert.equal(noteGrid().children.length,5);await click(button('撤销上次删除'));assert.equal(noteGrid().children.length,6);
  await click(button('交易风险'));await input(w.document.querySelector('textarea[aria-label="当日风险汇总"]'),'测试日期的已核实事件与应对');await click(button('立即提交'));assert.equal(doc.records['2026-10-28'].payload.fields.knowledgeRiskSummary,'测试日期的已核实事件与应对');
  await input(w.document.querySelector('#trade-date'),'2026-10-27');assert.equal(riskGrid().children.length,7);assert.equal(w.document.querySelector('textarea[aria-label="当日风险汇总"]').value,'');await input(w.document.querySelector('#trade-date'),'2026-10-28');assert.equal(w.document.querySelector('textarea[aria-label="当日风险汇总"]').value,'测试日期的已核实事件与应对');
- await click(button('操盘知识'));assert.equal(noteGrid().children.length,4);await click([...noteGrid().querySelectorAll('button')].find(b=>b.textContent==='编辑'));await input(w.document.querySelector('textarea[aria-label="知识点内容"]'),'本地未提交知识');
+ await click(button('操盘知识'));assert.equal(noteGrid().children.length,6);await click([...noteGrid().querySelectorAll('button')].find(b=>b.textContent==='编辑'));await input(w.document.querySelector('textarea[aria-label="知识点内容"]'),'本地未提交知识');
  const remoteKnowledge=structuredClone(doc.disciplineBook);remoteKnowledge.knowledge.notes[0].content='其他设备的知识';doc.disciplineBook=remoteKnowledge;sha='remote-knowledge';await act(async()=>{await intervals.find(x=>x.ms===30000).fn();});await settle();assert.ok(button('载入远端知识'));assert.equal(w.document.querySelector('textarea[aria-label="知识点内容"]').value,'本地未提交知识');await click(button('载入远端知识'));assert.ok(noteGrid().textContent.includes('其他设备的知识'));
- for(let i=0;i<4;i++)await click([...noteGrid().querySelectorAll('button')].find(b=>b.textContent==='删除'));
+ for(let i=0;i<6;i++)await click([...noteGrid().querySelectorAll('button')].find(b=>b.textContent==='删除'));
  await click(button('保存知识修改'));assert.deepEqual(doc.disciplineBook.knowledge.notes,[]);await click(button('交易纪律'));await click(button('操盘知识'));assert.equal(noteGrid().querySelectorAll('.knowledge-item').length,0);assert.equal(riskGrid(),null);await click(button('交易风险'));assert.equal(riskGrid().children.length,7);assert.equal(noteGrid(),null);assert.equal(doc.unknownRoot.keep,true);
 
  // New preparation freezes environment, and observe mode cannot become live authorization.
@@ -98,8 +98,8 @@ try {
  assert.ok(w.document.body.textContent.includes('市场环境 → 题材 → 候选'));
  assert.equal(w.document.querySelectorAll('.candidate-pool-table tbody tr').length,2);
  assert.equal(w.document.querySelectorAll('.theme-leads tbody tr').length,1);
- assert.equal(button('冻结盘前名单').disabled,false);await click(button('冻结盘前名单'));await click(button('立即提交'));
- let saved=JSON.parse(doc.records['2026-11-03'].payload.fields.candidatePlan);assert.equal(saved.context.permission,'observe');assert.equal(saved.sourceDate,'2026-11-02');
+ assert.equal(button('冻结盘前名单').disabled,false);await input(w.document.querySelector('textarea[aria-label="候选1 题材真实性"]'),'fixture thematic evidence');await click(button('冻结盘前名单'));await click(button('立即提交'));
+ let saved=JSON.parse(doc.records['2026-11-03'].payload.fields.candidatePlan);assert.equal(saved.context.permission,'observe');assert.equal(saved.sourceDate,'2026-11-02');assert.equal(saved.picks[0].evidence.authenticity,'fixture thematic evidence');
  await click(button('盘中执行'));assert.ok(w.document.body.textContent.includes('冻结环境仅允许观察或模拟'));assert.ok(button('记录首次合格信号').disabled);
  await click(button('返回盘前候选'));
  const fieldByText=label=>[...w.document.querySelectorAll('label')].find(l=>l.querySelector('span')?.textContent===label)?.querySelector('input,textarea,select');
@@ -126,6 +126,20 @@ try {
  assert.equal(w.document.querySelector('.candidate-pool-table').textContent.includes('候选1 000001'),false);
  assert.ok(w.document.body.textContent.includes('已核对准备日 2026-11-03'));
  assert.equal(fieldByText('A池成交额下限 · 万元（可调整）').value,'5000');
+
+ // Review1104 adds evidence without new navigation or rewriting frozen rules.
+ fixed=new RealDate('2026-10-28T10:00:00+08:00').getTime();await input(w.document.querySelector('#trade-date'),'2026-10-28');
+ const originalFrozen=doc.records['2026-10-28'].payload.fields.candidatePlan;
+ await click(button('市场环境'));assert.equal(w.document.querySelectorAll('.cross-market .knowledge-item').length,6);assert.equal(w.document.querySelectorAll('[role="tab"]').length,6);
+ await input(fieldByText('信号发生时间（北京时间）'),'2026-10-28T09:45');await input(fieldByText('信息来源 / 快照链接'),'fixture source');await input(fieldByText('已发生的事实（与预判分开）'),'fixture SOX rise');await input(fieldByText('可能传导的A股方向 / 标的，仅作映射'),'fixture A-share mapping');
+ assert.ok(w.document.querySelector('.cross-market').textContent.includes('时间有效'));
+ await click(button('立即提交'));assert.equal(JSON.parse(doc.records['2026-10-28'].payload.fields.crossMarketSignals)[0].facts,'fixture SOX rise');
+ await click(button('盘前候选'));assert.equal(w.document.querySelector('textarea[aria-label="候选1 题材真实性"]').matches(':disabled'),false);await input(w.document.querySelector('textarea[aria-label="候选1 题材真实性"]'),"retrospective research only");await click(button("立即提交"));assert.equal(doc.records['2026-10-28'].payload.fields.candidatePlan,originalFrozen);
+ await click(button('盘中执行'));await click(button('人工标记市场环境改变'));assert.ok(w.document.body.textContent.includes('需先保存资金风格复核'));
+ await input(fieldByText('变化发生时间（北京时间）'),'2026-10-28T09:50');await input(fieldByText('信息来源或快照链接'),'fixture timestamped source');await input(fieldByText('变化后的资金风格'),'tech rotation');await input(fieldByText('放量、集体突破等已发生事实'),'fixture collective breakout');
+ await click(button('保存风格复核'));await click(button('立即提交'));const reviewed=doc.records['2026-10-28'].payload.fields;
+ assert.equal(reviewed.styleChangePending,'no');assert.equal(JSON.parse(reviewed.styleReviews)[0].decision,'observe');assert.equal(JSON.parse(reviewed.styleReviews)[0].planCapturedAt,JSON.parse(originalFrozen).capturedAt);assert.equal(reviewed.candidatePlan,originalFrozen);
+ console.log('PASS: cross-market timestamp/source persistence, five evidence columns, manual style audit and frozen-plan immutability');
  console.log('PASS: Nov4 rejects missing Nov3 archive, automatically refreshes to newly published Nov3 candidates and preserves edits');
  console.log('PASS: Nov3 environment and candidate freeze, observe gate, audited permission update, support evidence, pause/resume and post-auction lock');
  console.log('PASS: Dashboard rule CRUD, native drag and case integrity, cross-date book, synthetic two-board list, first-signal dedup, unknown/root/date preservation, remote conflicts and in-flight edits; dense knowledge CRUD, isolated drag queues, cross-day risk summary and empty-list persistence');
