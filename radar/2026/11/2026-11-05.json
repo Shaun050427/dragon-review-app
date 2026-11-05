@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "tradeDate": "2026-11-05",
-  "observedAt": "2026-11-05T17:14:55+08:00",
+  "observedAt": "2026-11-05T23:26:58+08:00",
   "source": "同股整段同源日线；逐股priceSource标注；涨跌停池为现有归档",
   "adjustment": "前复权qfq；采集时口径；成交量详见逐股volumeUnit；仅收盘事实",
   "calendar": {
@@ -156086,7 +156086,7 @@
       "priceSource": "腾讯备用前复权",
       "volumeUnit": "腾讯原始量（单位未核验；仅同源计算量比）",
       "sourceFailures": [
-        "东方财富直连前复权: URLError: <urlopen error _ssl.c:993: The handshake operation timed out>"
+        "东方财富直连前复权: RemoteDisconnected: Remote end closed connection without response"
       ],
       "research": {
         "ruleVersion": "2.0",
@@ -173241,7 +173241,7 @@
       "priceSource": "腾讯备用前复权",
       "volumeUnit": "腾讯原始量（单位未核验；仅同源计算量比）",
       "sourceFailures": [
-        "东方财富直连前复权: RemoteDisconnected: Remote end closed connection without response"
+        "东方财富直连前复权: URLError: <urlopen error [Errno 101] Network is unreachable>"
       ],
       "research": {
         "ruleVersion": "2.0",
@@ -184688,7 +184688,7 @@
       "priceSource": "腾讯备用前复权",
       "volumeUnit": "腾讯原始量（单位未核验；仅同源计算量比）",
       "sourceFailures": [
-        "东方财富直连前复权: RemoteDisconnected: Remote end closed connection without response"
+        "东方财富直连前复权: URLError: <urlopen error [Errno 101] Network is unreachable>"
       ],
       "research": {
         "ruleVersion": "2.0",
@@ -206084,7 +206084,7 @@
       "priceSource": "腾讯备用前复权",
       "volumeUnit": "腾讯原始量（单位未核验；仅同源计算量比）",
       "sourceFailures": [
-        "东方财富直连前复权: RemoteDisconnected: Remote end closed connection without response"
+        "东方财富直连前复权: URLError: <urlopen error [Errno 101] Network is unreachable>"
       ],
       "research": {
         "ruleVersion": "2.0",
@@ -216135,7 +216135,7 @@
       "priceSource": "腾讯备用前复权",
       "volumeUnit": "腾讯原始量（单位未核验；仅同源计算量比）",
       "sourceFailures": [
-        "东方财富直连前复权: URLError: <urlopen error [Errno 101] Network is unreachable>"
+        "东方财富直连前复权: RemoteDisconnected: Remote end closed connection without response"
       ],
       "research": {
         "ruleVersion": "2.0",
@@ -221874,7 +221874,7 @@
       "priceSource": "腾讯备用前复权",
       "volumeUnit": "腾讯原始量（单位未核验；仅同源计算量比）",
       "sourceFailures": [
-        "东方财富直连前复权: RemoteDisconnected: Remote end closed connection without response"
+        "东方财富直连前复权: URLError: <urlopen error [Errno 101] Network is unreachable>"
       ],
       "research": {
         "ruleVersion": "2.0",
@@ -241883,7 +241883,7 @@
       "priceSource": "腾讯备用前复权",
       "volumeUnit": "腾讯原始量（单位未核验；仅同源计算量比）",
       "sourceFailures": [
-        "东方财富直连前复权: RemoteDisconnected: Remote end closed connection without response"
+        "东方财富直连前复权: URLError: <urlopen error [Errno 101] Network is unreachable>"
       ],
       "research": {
         "ruleVersion": "2.0",
@@ -256246,7 +256246,7 @@
       "priceSource": "腾讯备用前复权",
       "volumeUnit": "腾讯原始量（单位未核验；仅同源计算量比）",
       "sourceFailures": [
-        "东方财富直连前复权: RemoteDisconnected: Remote end closed connection without response"
+        "东方财富直连前复权: URLError: <urlopen error [Errno 101] Network is unreachable>"
       ],
       "research": {
         "ruleVersion": "2.0",
@@ -257673,7 +257673,7 @@
       "priceSource": "腾讯备用前复权",
       "volumeUnit": "腾讯原始量（单位未核验；仅同源计算量比）",
       "sourceFailures": [
-        "东方财富直连前复权: URLError: <urlopen error [Errno 101] Network is unreachable>"
+        "东方财富直连前复权: RemoteDisconnected: Remote end closed connection without response"
       ],
       "research": {
         "ruleVersion": "2.0",
