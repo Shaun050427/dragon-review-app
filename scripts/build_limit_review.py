@@ -10,7 +10,7 @@ from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-import akshare as ak
+from market_history import get_json
 
 TZ = ZoneInfo("Asia/Shanghai")
 OUT = Path(os.environ.get("REVIEW_OUTPUT_DIR", "/tmp/limit-review"))
@@ -52,7 +52,22 @@ def normalize_pool(frame, board=False):
     return result
 
 
-def build(date, observed, ups, downs, broken, lhb=None):
+def auxiliary_pool(frame, trade_date, kind, fetch=get_json):
+    """AKShare drops every column for an empty pool; confirm the raw contract."""
+    endpoints = {"down": "getTopicDTPool", "broken": "getTopicZBPool"}
+    if kind not in endpoints:
+        raise ValueError("不支持的辅助股池")
+    if not frame.empty:
+        return normalize_pool(frame), {"status": "normalized", "requestedDate": trade_date}
+    url = "https://push2ex.eastmoney.com/" + endpoints[kind]
+    payload = fetch(url, {"ut": "7eea3edcaed734bea9cbfc24409ed989", "dpt": "wz.ztzt", "Pageindex": "0", "pagesize": "10000", "sort": "fund:asc" if kind == "down" else "fbt:asc", "date": trade_date})
+    data = payload.get("data") if isinstance(payload, dict) else None
+    if not (isinstance(payload, dict) and type(payload.get("rc")) is int and payload["rc"] == 0 and isinstance(data, dict) and str(data.get("qdate")) == trade_date and type(data.get("tc")) is int and data["tc"] == 0 and isinstance(data.get("pool"), list) and not data["pool"]):
+        raise ValueError(f"{kind} 空表未通过原始响应复核：需rc=0、日期匹配、tc=0且pool=[]；不把未知当零")
+    return [], {"status": "verified_empty", "source": url, "requestedDate": trade_date, "responseDate": str(data["qdate"]), "total": 0, "rc": 0}
+
+
+def build(date, observed, ups, downs, broken, lhb=None, pool_checks=None):
     sectors = defaultdict(list)
     ladder = defaultdict(list)
     for stock in ups:
@@ -60,7 +75,7 @@ def build(date, observed, ups, downs, broken, lhb=None):
         ladder[str(stock["boards"])].append(stock["code"])
     lhb = lhb or []
     return {
-        "schemaVersion": 1, "tradeDate": date, "observedAt": observed,
+        "schemaVersion": 1, "tradeDate": date, "observedAt": observed, "poolChecks": pool_checks or {},
         "sources": {"pools": "东方财富涨停股池、跌停股池、炸板股池 / AKShare", "themes": "所属行业字段；不是概念题材统计", "lhb": "东方财富龙虎榜详情 / AKShare；仅榜单净买额，不归因自然人"},
         "counts": {"limitUp": len(ups), "limitDown": len(downs), "broken": len(broken), "firstBoard": len(ladder.get("1", []))},
         "ladder": dict(sorted(ladder.items(), key=lambda pair: -int(pair[0]))),
@@ -88,6 +103,7 @@ def render(data):
 
 
 def main():
+    import akshare as ak
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--trade-date", help="明确指定历史交易日补采；默认北京时间当天")
@@ -105,8 +121,8 @@ def main():
         target = now.date()
     trade_date = target.strftime("%Y%m%d")
     ups = normalize_pool(ak.stock_zt_pool_em(date=trade_date), board=True)
-    downs = normalize_pool(ak.stock_zt_pool_dtgc_em(date=trade_date))
-    broken = normalize_pool(ak.stock_zt_pool_zbgc_em(date=trade_date))
+    downs, down_check = auxiliary_pool(ak.stock_zt_pool_dtgc_em(date=trade_date), trade_date, "down")
+    broken, broken_check = auxiliary_pool(ak.stock_zt_pool_zbgc_em(date=trade_date), trade_date, "broken")
     lhb = []
     try:
         frame = ak.stock_lhb_detail_em(start_date=trade_date, end_date=trade_date)
@@ -120,7 +136,7 @@ def main():
                 lhb.append({"code": code, "name": str(row["名称"]), "reason": str(row["上榜原因"]), "netBuy": number(row["龙虎榜净买额"])})
     except Exception as exc:
         print(f"龙虎榜暂不可用：{exc}")
-    data = build(target.isoformat(), now.isoformat(timespec="seconds"), ups, downs, broken, lhb)
+    data = build(target.isoformat(), now.isoformat(timespec="seconds"), ups, downs, broken, lhb, {"down": down_check, "broken": broken_check})
     OUT.mkdir(parents=True, exist_ok=True)
     stem = data["tradeDate"]
     (OUT / f"{stem}.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
