@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "tradeDate": "2026-11-10",
-  "observedAt": "2026-11-10T15:11:04+08:00",
+  "observedAt": "2026-11-10T23:34:53+08:00",
   "source": "同股整段同源日线；逐股priceSource标注；涨跌停池为现有归档",
   "adjustment": "前复权qfq；采集时口径；成交量详见逐股volumeUnit；仅收盘事实",
   "calendar": {
