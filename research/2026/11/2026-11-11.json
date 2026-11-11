@@ -24,10 +24,6 @@
       "reason": "日线存在缺口/停牌；均线与首次触线待人工核对"
     },
     {
-      "code": "601123",
-      "reason": "东方财富直连前复权: TimeoutError: The read operation timed out | 腾讯备用前复权: ValueError: 缺指数日线/明确前复权日线"
-    },
-    {
       "code": "603580",
       "reason": "日线存在缺口/停牌；均线与首次触线待人工核对"
     },
@@ -65,7 +61,7 @@
     },
     {
       "code": "301697",
-      "reason": "东方财富直连前复权: URLError: <urlopen error _ssl.c:994: The handshake operation timed out> | 腾讯备用前复权: ValueError: 缺指数日线/明确前复权日线"
+      "reason": "东方财富直连前复权: RemoteDisconnected: Remote end closed connection without response | 腾讯备用前复权: ValueError: 缺指数日线/明确前复权日线"
     },
     {
       "code": "000668",
@@ -78,6 +74,10 @@
     {
       "code": "002076",
       "reason": "日线存在缺口/停牌；均线与首次触线待人工核对"
+    },
+    {
+      "code": "001239",
+      "reason": "东方财富直连前复权: RemoteDisconnected: Remote end closed connection without response | 腾讯备用前复权: ValueError: 缺指数日线/明确前复权日线"
     },
     {
       "code": "002931",
