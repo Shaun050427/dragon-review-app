@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "tradeDate": "2026-11-12",
-  "observedAt": "2026-11-12T23:57:41+08:00",
+  "observedAt": "2026-11-13T14:34:42+08:00",
   "poolChecks": {
     "down": {
       "status": "normalized",
@@ -37,15 +37,15 @@
       "605255"
     ],
     "2": [
-      "002148",
       "603725",
+      "002148",
       "603396",
       "002593",
       "603135"
     ],
     "1": [
-      "000573",
       "002086",
+      "000573",
       "002696",
       "600558",
       "002628",
@@ -281,39 +281,6 @@
   ],
   "stocks": [
     {
-      "code": "000573",
-      "name": "粤宏远Ａ",
-      "industry": "房地产开",
-      "boards": 1,
-      "firstSeal": "09:25:00",
-      "lastSeal": "09:25:00",
-      "limitStats": "1/1",
-      "turnover": 27012921.0,
-      "openCount": 0
-    },
-    {
-      "code": "002086",
-      "name": "东方海洋",
-      "industry": "农产品加",
-      "boards": 1,
-      "firstSeal": "09:25:00",
-      "lastSeal": "15:00:00",
-      "limitStats": "17/9",
-      "turnover": 2851430016.0,
-      "openCount": 26
-    },
-    {
-      "code": "002148",
-      "name": "北纬科技",
-      "industry": "通信服务",
-      "boards": 2,
-      "firstSeal": "09:25:00",
-      "lastSeal": "14:39:00",
-      "limitStats": "2/2",
-      "turnover": 954756768.0,
-      "openCount": 6
-    },
-    {
       "code": "002623",
       "name": "亚玛顿",
       "industry": "光伏设备",
@@ -334,6 +301,39 @@
       "limitStats": "2/2",
       "turnover": 238894772.0,
       "openCount": 1
+    },
+    {
+      "code": "002148",
+      "name": "北纬科技",
+      "industry": "通信服务",
+      "boards": 2,
+      "firstSeal": "09:25:00",
+      "lastSeal": "14:39:00",
+      "limitStats": "2/2",
+      "turnover": 954756768.0,
+      "openCount": 6
+    },
+    {
+      "code": "002086",
+      "name": "东方海洋",
+      "industry": "农产品加",
+      "boards": 1,
+      "firstSeal": "09:25:00",
+      "lastSeal": "15:00:00",
+      "limitStats": "17/9",
+      "turnover": 2851430016.0,
+      "openCount": 26
+    },
+    {
+      "code": "000573",
+      "name": "粤宏远Ａ",
+      "industry": "房地产开",
+      "boards": 1,
+      "firstSeal": "09:25:00",
+      "lastSeal": "09:25:00",
+      "limitStats": "1/1",
+      "turnover": 27012921.0,
+      "openCount": 0
     },
     {
       "code": "603396",
@@ -717,9 +717,9 @@
   ],
   "broken": [
     {
-      "code": "002209",
-      "name": "达 意 隆",
-      "industry": "专用设备"
+      "code": "002931",
+      "name": "锋龙股份",
+      "industry": "通用设备"
     },
     {
       "code": "002425",
@@ -732,9 +732,9 @@
       "industry": "通用设备"
     },
     {
-      "code": "002931",
-      "name": "锋龙股份",
-      "industry": "通用设备"
+      "code": "002209",
+      "name": "达 意 隆",
+      "industry": "专用设备"
     },
     {
       "code": "600103",
