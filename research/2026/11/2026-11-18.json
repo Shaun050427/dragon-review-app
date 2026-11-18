@@ -64,6 +64,10 @@
       "reason": "日线存在缺口/停牌；均线与首次触线待人工核对"
     },
     {
+      "code": "301697",
+      "reason": "东方财富直连前复权: RemoteDisconnected: Remote end closed connection without response | 腾讯备用前复权: ValueError: 缺指数日线/明确前复权日线"
+    },
+    {
       "code": "000668",
       "reason": "日线存在缺口/停牌；均线与首次触线待人工核对"
     },
@@ -77,7 +81,11 @@
     },
     {
       "code": "605255",
-      "reason": "东方财富直连前复权: ValueError: 历史未覆盖所选交易日；拒绝用旧价格替代 | 腾讯备用前复权: ValueError: 历史未覆盖所选交易日；拒绝用旧价格替代"
+      "reason": "东方财富直连前复权: RemoteDisconnected: Remote end closed connection without response | 腾讯备用前复权: ValueError: 历史未覆盖所选交易日；拒绝用旧价格替代"
+    },
+    {
+      "code": "001239",
+      "reason": "东方财富直连前复权: RemoteDisconnected: Remote end closed connection without response | 腾讯备用前复权: ValueError: 缺指数日线/明确前复权日线"
     },
     {
       "code": "301314",
@@ -6283,106 +6291,6 @@
       "executionStatus": "缺分钟信号和成交证据",
       "status": "归档或日线缺口",
       "panicVolume": "中性/待核"
-    },
-    {
-      "code": "301697",
-      "signalDate": "2026-11-11",
-      "cluster": "301697",
-      "cycle": "2026-11-06",
-      "leaderClass": "C1",
-      "strategy": "S0候选",
-      "period": 5,
-      "attempt": 1,
-      "boardAge": 3,
-      "activeAge": 3,
-      "environment": "未标注",
-      "priority": "数据待核",
-      "forwardReturnPct": null,
-      "netReturnPct": null,
-      "realizedR": null,
-      "mfePct": null,
-      "maePct": null,
-      "overnightGapPct": null,
-      "t1LowPct": null,
-      "plannedRewardRisk": null,
-      "executionStatus": "缺分钟信号和成交证据",
-      "status": "归档或日线缺口",
-      "panicVolume": "非跌停或待核"
-    },
-    {
-      "code": "301697",
-      "signalDate": "2026-11-13",
-      "cluster": "301697",
-      "cycle": "2026-11-06",
-      "leaderClass": "C1",
-      "strategy": "S1候选",
-      "period": 10,
-      "attempt": 1,
-      "boardAge": 5,
-      "activeAge": 5,
-      "environment": "未标注",
-      "priority": "数据待核",
-      "forwardReturnPct": null,
-      "netReturnPct": null,
-      "realizedR": null,
-      "mfePct": null,
-      "maePct": null,
-      "overnightGapPct": null,
-      "t1LowPct": null,
-      "plannedRewardRisk": null,
-      "executionStatus": "缺分钟信号和成交证据",
-      "status": "归档或日线缺口",
-      "panicVolume": "非跌停或待核"
-    },
-    {
-      "code": "301697",
-      "signalDate": "2026-11-18",
-      "cluster": "301697",
-      "cycle": "2026-11-06",
-      "leaderClass": "C1",
-      "strategy": "S2观察",
-      "period": 20,
-      "attempt": 1,
-      "boardAge": 8,
-      "activeAge": 8,
-      "environment": "未标注",
-      "priority": "数据待核",
-      "forwardReturnPct": null,
-      "netReturnPct": null,
-      "realizedR": null,
-      "mfePct": null,
-      "maePct": null,
-      "overnightGapPct": null,
-      "t1LowPct": null,
-      "plannedRewardRisk": null,
-      "executionStatus": "缺分钟信号和成交证据",
-      "status": "归档或日线缺口",
-      "panicVolume": "非跌停或待核"
-    },
-    {
-      "code": "301697",
-      "signalDate": "2026-11-18",
-      "cluster": "301697",
-      "cycle": "2026-11-06",
-      "leaderClass": "C1",
-      "strategy": "S2观察",
-      "period": 30,
-      "attempt": 1,
-      "boardAge": 8,
-      "activeAge": 8,
-      "environment": "未标注",
-      "priority": "数据待核",
-      "forwardReturnPct": null,
-      "netReturnPct": null,
-      "realizedR": null,
-      "mfePct": null,
-      "maePct": null,
-      "overnightGapPct": null,
-      "t1LowPct": null,
-      "plannedRewardRisk": null,
-      "executionStatus": "缺分钟信号和成交证据",
-      "status": "归档或日线缺口",
-      "panicVolume": "非跌停或待核"
     },
     {
       "code": "601956",
@@ -12611,9 +12519,9 @@
     }
   ],
   "descriptive": {
-    "samples": 500,
+    "samples": 496,
     "completed": 0,
-    "stockClusters": 72,
+    "stockClusters": 71,
     "winRatePct": null,
     "meanReturnPct": null,
     "payoffRatio": null,
@@ -12626,9 +12534,9 @@
     "warning": "样本不足30或同股相关，不能判定优势"
   },
   "executable": {
-    "samples": 500,
+    "samples": 496,
     "completed": 0,
-    "stockClusters": 72,
+    "stockClusters": 71,
     "winRatePct": null,
     "meanReturnPct": null,
     "payoffRatio": null,
@@ -13313,9 +13221,9 @@
       "activeClock": "0—10日",
       "panicVolume": "非跌停或待核",
       "descriptive": {
-        "samples": 20,
+        "samples": 19,
         "completed": 0,
-        "stockClusters": 15,
+        "stockClusters": 14,
         "winRatePct": null,
         "meanReturnPct": null,
         "payoffRatio": null,
@@ -13328,9 +13236,9 @@
         "warning": "样本不足30或同股相关，不能判定优势"
       },
       "executable": {
-        "samples": 20,
+        "samples": 19,
         "completed": 0,
-        "stockClusters": 15,
+        "stockClusters": 14,
         "winRatePct": null,
         "meanReturnPct": null,
         "payoffRatio": null,
@@ -14054,9 +13962,9 @@
       "activeClock": "0—10日",
       "panicVolume": "非跌停或待核",
       "descriptive": {
-        "samples": 14,
+        "samples": 13,
         "completed": 0,
-        "stockClusters": 11,
+        "stockClusters": 10,
         "winRatePct": null,
         "meanReturnPct": null,
         "payoffRatio": null,
@@ -14069,9 +13977,9 @@
         "warning": "样本不足30或同股相关，不能判定优势"
       },
       "executable": {
-        "samples": 14,
+        "samples": 13,
         "completed": 0,
-        "stockClusters": 11,
+        "stockClusters": 10,
         "winRatePct": null,
         "meanReturnPct": null,
         "payoffRatio": null,
@@ -15068,9 +14976,9 @@
       "activeClock": "0—10日",
       "panicVolume": "非跌停或待核",
       "descriptive": {
-        "samples": 2,
+        "samples": 1,
         "completed": 0,
-        "stockClusters": 2,
+        "stockClusters": 1,
         "winRatePct": null,
         "meanReturnPct": null,
         "payoffRatio": null,
@@ -15083,9 +14991,9 @@
         "warning": "样本不足30或同股相关，不能判定优势"
       },
       "executable": {
-        "samples": 2,
+        "samples": 1,
         "completed": 0,
-        "stockClusters": 2,
+        "stockClusters": 1,
         "winRatePct": null,
         "meanReturnPct": null,
         "payoffRatio": null,
@@ -15926,9 +15834,9 @@
       "activeClock": "0—10日",
       "panicVolume": "非跌停或待核",
       "descriptive": {
-        "samples": 2,
+        "samples": 1,
         "completed": 0,
-        "stockClusters": 2,
+        "stockClusters": 1,
         "winRatePct": null,
         "meanReturnPct": null,
         "payoffRatio": null,
@@ -15941,9 +15849,9 @@
         "warning": "样本不足30或同股相关，不能判定优势"
       },
       "executable": {
-        "samples": 2,
+        "samples": 1,
         "completed": 0,
-        "stockClusters": 2,
+        "stockClusters": 1,
         "winRatePct": null,
         "meanReturnPct": null,
         "payoffRatio": null,
