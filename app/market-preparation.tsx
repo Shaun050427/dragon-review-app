@@ -4,10 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { marketContext,themeLeads,permissionLabel } from "@/lib/market-preparation";
 import type { Fields,FunnelDay } from "@/lib/low-absorption";
+import { DailyReviewForm } from "@/app/daily-review";
+import { DAILY_REVIEW_VERSION } from "@/lib/daily-review";
 export function MarketPreparation({date,sourceDate,fields:f,onChange,days,complete,locked}:{date:string;sourceDate:string;fields:Fields;onChange:(k:string,v:string)=>void;days:FunnelDay[];complete:boolean;locked:boolean}) {
  const c=marketContext(f,date,sourceDate),leads=themeLeads(days,sourceDate);
  const select=(key:string,label:string,value:string,options:string[][])=><label className="field"><span>{label}</span><select value={value} onChange={e=>onChange(key,e.target.value)}>{options.map(([v,t])=><option value={v} key={v}>{t}</option>)}</select></label>;
- return <Card className="market-preparation"><CardHeader><CardTitle>市场环境 → 题材 → 候选</CardTitle><p>执行日 {date} · 收盘事实截至 {sourceDate||"待核"} · 新增权限：{permissionLabel(c.permission)}</p></CardHeader><CardContent className="space-y-4"><fieldset disabled={locked}><div className="market-context-grid">
+ return <Card className="market-preparation"><CardHeader><CardTitle>市场环境 → 题材 → 候选</CardTitle><p>执行日 {date} · 收盘事实截至 {sourceDate||"待核"} · 新增权限：{permissionLabel(c.permission)}</p></CardHeader><CardContent className="space-y-4">{date>=DAILY_REVIEW_VERSION&&<DailyReviewForm date={date} sourceDate={sourceDate} fields={f} onChange={onChange} locked={locked}/>}<fieldset disabled={locked}><div className="market-context-grid">
  {select("marketTemperature","市场温度",c.temperature,["待核","冰点/退潮","震荡/分歧","修复","主升"].map(v=>[v,v]))}
  {select("capitalStyle","资金风格",c.capitalStyle,["待核","趋势核心","连板接力","低位新题材","防守/轮动","混合"].map(v=>[v,v]))}
  {select("marketPermission","新增交易权限",c.permission,[["pending","待确认"],["observe","只观察 / 处理持仓"],["paper","模拟验证"],["evaluate","允许进入人工判断"]])}</div><div className="form-grid two">

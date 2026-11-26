@@ -12,6 +12,7 @@ import { marketPlanIssues } from "@/lib/candidate-workflow";
 import { preparationWindow } from "@/lib/preparation-freshness";
 import {CandidateComparison} from "@/app/candidate-comparison";
 import {candidateEvidence} from "@/lib/review-insights";
+import { dailyReviewIssues } from "@/lib/daily-review";
 const ROOT="https://raw.githubusercontent.com/Shaun050427/dragon-review-app/market-data/";
 const path=(date:string)=>`${date.slice(0,4)}/${date.slice(5,7)}/${date}.json`;
 async function get(uri:string,signal:AbortSignal) { const r=await fetch(ROOT+uri+`?v=${Date.now()}`,{cache:"no-store",signal:AbortSignal.any([signal,AbortSignal.timeout(12000)])});if(!r.ok)throw new Error(String(r.status));return r.json(); }
@@ -48,7 +49,7 @@ export function TradingPreparation({date,fields:f,onChange,onCalendar}:{date:str
   const patch=(code:string,v:Partial<CandidatePick>)=>setPicks(picks.map(p=>p.code===code?{...p,...v}:p));
   const calendarConfirmed=Boolean(state.calendar?.sessions.includes(date) || f.preparationSessionConfirmed==="yes");
   const context=marketContext(f,date,last);
-  const issues=[...(!ready?[state.freshness||`${state.expected||"最新已收盘日"} 盘后归档尚未发布，不能沿用旧候选池`]:[]),...planIssues(picks,f.preparationFlat==="yes",sessions,missing),...(date>=REVIEW_VERSION?marketPlanIssues(context,picks):[])];
+  const issues=[...(!ready?[state.freshness||`${state.expected||"最新已收盘日"} 盘后归档尚未发布，不能沿用旧候选池`]:[]),...planIssues(picks,f.preparationFlat==="yes",sessions,missing),...(date>=REVIEW_VERSION?marketPlanIssues(context,picks):[]),...(context.permission==="evaluate"?dailyReviewIssues(context.dailyReview,date,last):[])];
   const shown=filter==="new"?pool.filter(s=>days.find(d=>d.date===last)?.stocks.some(x=>x.code===s.code&&x.boards<=2)):pool.filter(s=>filter==="all"||filter==="C"?(filter==="all"||!s.queue):s.queue===filter);
   function freeze() {
     if(validPlan?.kind==="premarket" && new Date().getTime()>=Date.parse(`${date}T09:25:00+08:00`)){setMessage("9:25后盘前名单锁定，不能改写。");return;}

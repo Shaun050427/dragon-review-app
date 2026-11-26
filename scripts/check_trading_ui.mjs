@@ -139,6 +139,23 @@ try {
  await input(fieldByText('变化发生时间（北京时间）'),'2026-10-28T09:50');await input(fieldByText('信息来源或快照链接'),'fixture timestamped source');await input(fieldByText('变化后的资金风格'),'tech rotation');await input(fieldByText('放量、集体突破等已发生事实'),'fixture collective breakout');
  await click(button('保存风格复核'));await click(button('立即提交'));const reviewed=doc.records['2026-10-28'].payload.fields;
  assert.equal(reviewed.styleChangePending,'no');assert.equal(JSON.parse(reviewed.styleReviews)[0].decision,'observe');assert.equal(JSON.parse(reviewed.styleReviews)[0].planCapturedAt,JSON.parse(originalFrozen).capturedAt);assert.equal(reviewed.candidatePlan,originalFrozen);
+ // New review fields survive saves; editing invalidates the completion stamp.
+ calendar.coveredThrough='2026-11-27';calendar.sessions.push('2026-11-20','2026-11-23','2026-11-24','2026-11-25','2026-11-26','2026-11-27');
+ fixed=new RealDate('2026-11-27T08:00:00+08:00').getTime();
+ await input(w.document.querySelector('#trade-date'),'2026-11-27');await click(button('盘前候选'));
+ assert.ok(w.document.body.textContent.includes('每日复盘 → 次日预案'));
+ assert.ok(button('记录复盘完成时间').disabled);
+ await input(w.document.querySelector('input[aria-label="复盘数据日期"]'),'2026-11-26');
+ for(const label of ['赚钱效应','亏钱效应','游资与机构','持仓审计与退出'])await input(w.document.querySelector(`textarea[aria-label="${label}"]`),'fixture dated '+label);
+ await click(button('记录复盘完成时间'));await click(button('立即提交'));
+ assert.equal(doc.records['2026-11-27'].payload.fields.reviewCompletedAt,new RealDate(fixed).toISOString());
+ await input(w.document.querySelector('textarea[aria-label="赚钱效应"]'),'edited evidence');await click(button('立即提交'));
+ assert.equal(doc.records['2026-11-27'].payload.fields.reviewCompletedAt,'');
+ assert.equal(w.document.querySelector('select[aria-label="恢复期状态"]').value,'repair');
+ await input(w.document.querySelector('input[aria-label="合并账户交易后总仓 %"]'),'65');await click(button('立即提交'));
+ assert.equal(doc.records['2026-11-27'].payload.fields.portfolioTotalPct,'65');
+ assert.ok(w.document.body.textContent.includes('恢复期合并账户交易后总仓须填写且≤20%'));
+ console.log('PASS: daily review persistence, completion invalidation, recovery default and consolidated risk banner');
  console.log('PASS: cross-market timestamp/source persistence, five evidence columns, manual style audit and frozen-plan immutability');
  console.log('PASS: Nov4 rejects missing Nov3 archive, automatically refreshes to newly published Nov3 candidates and preserves edits');
  console.log('PASS: Nov3 environment and candidate freeze, observe gate, audited permission update, support evidence, pause/resume and post-auction lock');
