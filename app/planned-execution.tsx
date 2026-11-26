@@ -11,6 +11,7 @@ import type { Fields, TradingCalendar } from "@/lib/low-absorption";
 import { permissionLabel } from "@/lib/market-preparation";
 import {EVIDENCE_FIELDS} from "@/lib/review-insights";
 import {StyleReevaluation} from "@/app/style-reevaluation";
+import { RecoverySettings } from "@/app/daily-review";
 const display=(n:number|null,suffix:string)=>n===null?"待补齐":`${n.toFixed(2)}${suffix}`;
 export function PlannedExecution({date,fields:f,onChange,book,calendar,onPrepare}:{onPrepare:()=>void;date:string;fields:Fields;onChange:(k:string,v:string)=>void;book:DisciplineBook;calendar:TradingCalendar|null}) {
   const [message,setMessage]=useState(""); const stored=readPlan(f.candidatePlan),plan=stored?.executionDate===date?stored:null;
@@ -38,9 +39,9 @@ export function ExecutionJournal({date,fields:f,onChange,history=[]}:{date:strin
   </CardContent></Card>;
 }
 
-export function ExecutionAccountSettings({fields:f,onChange}:{fields:Fields;onChange:(key:string,value:string)=>void}) {
+export function ExecutionAccountSettings({date,fields:f,onChange}:{date:string;fields:Fields;onChange:(key:string,value:string)=>void}) {
   const issues=executionAccountIssues(f), status=accountRisk(f);
   return <details className="execution-account-settings"><summary>账户与风险设置 · 单票≤{f.maxPosition||"待设"}% · 单笔计划风险 {f.riskPerTradePct||"待设"}%{issues.length?" · 待补齐":""}</summary><Card><CardHeader><CardTitle>盘前账户与风险</CardTitle><p>设置后盘中直接读取；已触发回撤或日内亏损阈值时暂停新增交易。</p></CardHeader><CardContent className="space-y-4"><div className="form-grid two">{([
     ["startEquity","初始资金"],["currentEquity","当前净值"],["peakEquity","历史峰值"],["drawdownStopPct","回撤暂停阈值 %"],["maxPosition","最大单票仓位 %"],["riskPerTradePct","单笔计划风险 %"],["dailyStopR","日内停止交易 R"],["realizedR","今日已实现 R"],["dailyPnl","今日盈亏额"],
-  ]).map(([key,label])=><label className="field" key={key}><span>{label}</span><Input type="number" step="any" aria-label={label} value={f[key]||""} onChange={event=>onChange(key,event.target.value)}/></label>)}</div><p className="liquidity-note">{issues.join("；")||`账户检查通过；当前回撤 ${status.drawdown?.toFixed(2)}%。计划风险不保证隔夜跳空或跌停时的实际损失。`}</p></CardContent></Card></details>;
+  ]).map(([key,label])=><label className="field" key={key}><span>{label}</span><Input type="number" step="any" aria-label={label} value={f[key]||""} onChange={event=>onChange(key,event.target.value)}/></label>)}</div><p className="liquidity-note">{issues.join("；")||`账户基础检查通过；当前回撤 ${status.drawdown?.toFixed(2)}%。计划风险不保证隔夜跳空或跌停时的实际损失。`}</p><RecoverySettings date={date} fields={f} onChange={onChange}/></CardContent></Card></details>;
 }

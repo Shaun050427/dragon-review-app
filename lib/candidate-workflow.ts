@@ -2,6 +2,7 @@ import type { Fields, FunnelDay, RadarSnapshot, TradingCalendar } from "./low-ab
 import { contextIssues, readContext, type MarketContext, REVIEW_VERSION } from "./market-preparation.ts";
 import {validEvidence,emptyEvidence,readStyleReviews,styleReviewIssues,chinaTimestamp,type CandidateEvidence} from "./review-insights.ts";
 import type { DisciplineBook } from "./trading-discipline";
+import { dailyReviewIssues, recoveryIssues, DAILY_REVIEW_VERSION } from "./daily-review.ts";
 export type Queue = "A" | "B" | "C";
 export type PoolStock = { code: string; name: string; industry: string; maxBoards: number; sourceDate: string; reasons: string[]; queue: Queue | ""; liquidity: "pass" | "unknown" | "excluded"; ma5First: boolean; ma10First?: boolean; sealEvidence?:string };
 export type ManualCore = { code: string; name: string; industry: string; date: string; evidence: string };
@@ -76,6 +77,12 @@ export function marketPlanIssues(context:MarketContext,picks:CandidatePick[]) {
 export function freezePlan(executionDate: string,sessions: string[],missing: string[],picks: CandidatePick[],flat: boolean,now = new Date(),context?:MarketContext): FrozenPlan {
   const issues = planIssues(picks,flat,sessions,missing); if (issues.length) throw new Error(issues.join("；"));
   if(executionDate>=REVIEW_VERSION){if(!context)throw new Error("先完成市场环境与新增权限");const x=marketPlanIssues(context,picks);if(context.asOf!==sessions.at(-1))x.push("环境事实日期与准备日不一致");if(x.length)throw new Error(x.join("；"));}
+  if(executionDate>=DAILY_REVIEW_VERSION&&context){
+    const review=dailyReviewIssues(context.dailyReview,executionDate,context.asOf,now);
+    if(context.recoveryMode==="normal"&&!context.recoveryReleaseEvidence?.trim())review.push("结束恢复期前写明恢复依据");
+    // Observation and retrospective plans remain recordable; they never authorize live entries.
+    if(context.permission==="evaluate"&&review.length)throw new Error(review.join("；"));
+  }
   const capturedAt = now.toISOString();
   return { schemaVersion:1,executionDate,sourceDate:sessions.at(-1)!,sessions:[...sessions],missing:[...missing],picks:structuredClone(picks),flat,...(context?{context:structuredClone(context)}:{}),capturedAt,kind:now.getTime() < Date.parse(`${executionDate}T09:25:00+08:00`) ? "premarket" : "retrospective" };
 }
@@ -97,7 +104,14 @@ export function repairStatus(book: DisciplineBook, date: string, calendar: Tradi
 export function executionIssues(date: string, f: Fields, book: DisciplineBook, calendar: TradingCalendar | null, now=new Date()) {
   const issues:string[] = [], p=readPlan(f.candidatePlan);
   if (date!==chinaDate(now)) issues.push("历史或未来日期不能授权当前实盘");
+  if(date>=DAILY_REVIEW_VERSION)issues.push(...recoveryIssues(date,f));
   if (!p || p.executionDate!==date) return [...issues,"尚无本交易日冻结名单"];
+  if(date>=DAILY_REVIEW_VERSION){
+    issues.push(...dailyReviewIssues(p.context?.dailyReview,date,p.sourceDate,new Date(p.capturedAt)));
+    if(!p.context?.recoveryMode)issues.push("冻结名单缺少恢复期状态，需盘前重新准备");
+    if(p.context?.recoveryMode==="repair"&&f.recoveryMode==="normal")issues.push("盘前冻结为恢复期，盘中不能解除限制");
+    if(p.context?.recoveryMode==="normal"&&!p.context.recoveryReleaseEvidence?.trim())issues.push("冻结名单缺少结束恢复期依据");
+  }
   if (p.kind!=="premarket" || Date.parse(p.capturedAt)>=Date.parse(`${date}T09:25:00+08:00`)) issues.push("盘后补录不能成为盘前授权");
   if (calendar && preparationSessions(date,calendar).at(-1)!==p.sourceDate) issues.push("准备日不是执行日前最近已知交易日，需重新准备");
   if (p.flat || planIssues(p.picks,p.flat,p.sessions,p.missing).length) issues.push("候选预案不完整或已选择空仓");

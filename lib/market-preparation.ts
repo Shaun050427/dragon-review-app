@@ -1,11 +1,12 @@
 import type { Fields, FunnelDay } from "./low-absorption";
 import {readCrossSignals,type CrossSignal} from "./review-insights.ts";
+import { dailyReview, validDailyReview, DAILY_REVIEW_VERSION, type DailyReview } from "./daily-review.ts";
 export const REVIEW_VERSION = "2026-11-02";
-export type MarketContext = { asOf:string; temperature:string; capitalStyle:string; permission:"observe"|"paper"|"evaluate"|"pending"; evidence:string; reason:string; catalysts:string; excludedThemes:string; strongPlan:string; weakPlan:string; crossSignals?:CrossSignal[] };
+export type MarketContext = { asOf:string; temperature:string; capitalStyle:string; permission:"observe"|"paper"|"evaluate"|"pending"; evidence:string; reason:string; catalysts:string; excludedThemes:string; strongPlan:string; weakPlan:string; crossSignals?:CrossSignal[]; dailyReview?:DailyReview; recoveryMode?:"repair"|"normal"; recoveryReleaseEvidence?:string };
 export function marketContext(f:Fields,date:string,sourceDate:string):MarketContext {
   const recent=date>="2026-11-02"&&date<="2026-11-03";
   const permission=f.marketPermission;
-  return {crossSignals:readCrossSignals(f.crossMarketSignals),asOf:sourceDate,temperature:f.marketTemperature||"待核",capitalStyle:f.capitalStyle||"待核",permission:["observe","paper","evaluate"].includes(permission)?permission as MarketContext["permission"]:recent?"observe":"pending",evidence:f.marketContextEvidence||"",reason:f.marketPermissionReason||"",catalysts:f.marketCatalysts||"",excludedThemes:f.excludedThemes??(recent?"机器人、羊字辈":""),strongPlan:f.strongDivergencePlan||"强分歧再探底：先处理持仓风险，观察核心止跌与同伴承接；未确认不新增。",weakPlan:f.weakDivergencePlan||"弱分歧企稳：只跟踪盘前候选，确认低点、VWAP、主动突破与板块反馈；仍以当日新增权限为准。"};
+  return {...(date>=DAILY_REVIEW_VERSION?{dailyReview:dailyReview(f),recoveryMode:f.recoveryMode==="normal"?"normal" as const:"repair" as const,recoveryReleaseEvidence:f.recoveryReleaseEvidence||""}:{}),crossSignals:readCrossSignals(f.crossMarketSignals),asOf:sourceDate,temperature:f.marketTemperature||"待核",capitalStyle:f.capitalStyle||"待核",permission:["observe","paper","evaluate"].includes(permission)?permission as MarketContext["permission"]:recent||date>=DAILY_REVIEW_VERSION?"observe":"pending",evidence:f.marketContextEvidence||"",reason:f.marketPermissionReason||"",catalysts:f.marketCatalysts||"",excludedThemes:f.excludedThemes??(recent?"机器人、羊字辈":""),strongPlan:f.strongDivergencePlan||"强分歧再探底：先处理持仓风险，观察核心止跌与同伴承接；未确认不新增。",weakPlan:f.weakDivergencePlan||"弱分歧企稳：只跟踪盘前候选，确认低点、VWAP、主动突破与板块反馈；仍以当日新增权限为准。"};
 }
 export function contextIssues(c:MarketContext) {
   const out:string[]=[];
@@ -18,6 +19,9 @@ export function contextIssues(c:MarketContext) {
 export function readContext(v:unknown):MarketContext|null {
   if(!v||typeof v!=="object")return null;
   const c=v as MarketContext;
+  if(c.dailyReview!==undefined&&!validDailyReview(c.dailyReview))return null;
+  if(c.recoveryMode!==undefined&&!["repair","normal"].includes(c.recoveryMode))return null;
+  if(c.recoveryReleaseEvidence!==undefined&&typeof c.recoveryReleaseEvidence!=="string")return null;
   if(c.crossSignals!==undefined&&(!Array.isArray(c.crossSignals)||readCrossSignals(JSON.stringify(c.crossSignals)).length!==c.crossSignals.length))return null;
   return [c.asOf,c.temperature,c.capitalStyle,c.evidence,c.reason,c.catalysts,c.excludedThemes,c.strongPlan,c.weakPlan].every(x=>typeof x==="string")&&["observe","paper","evaluate","pending"].includes(c.permission)?c:null;
 }
